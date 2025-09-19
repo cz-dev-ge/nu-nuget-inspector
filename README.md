@@ -5,15 +5,14 @@ Fork of aboutcode-org's nuget-inspector.
 Fixes some issues of the original one as my PRs where not merged but we need them.
 
 
-# Original README
-========================================================================
-nuget-inspector - inspect nuget and .NET projects packages dependencies
-========================================================================
+# Original README (but converted from RST to MD)
 
-Homepage: https://github.com/nexB/nuget-inspector and https://www.aboutcode.org/
+## nuget-inspector - inspect nuget and .NET projects packages dependencies
+
+Homepage: [https://github.com/nexB/nuget-inspector](https://github.com/nexB/nuget-inspector) and [https://www.aboutcode.org/](https://www.aboutcode.org/)
 
 
-``nuget-inspector`` is a utility to:
+`nuget-inspector` is a utility to:
 
 - resolve .NET project nuget packages dependencies
 
@@ -35,8 +34,7 @@ style of .NET and NuGet projects and package layouts, manifests and lockfiles.
     format are evolving quickly.
 
 
-Usage
---------
+### Usage
 
 - Install the dotnet SDK 6.x for your platform from Microsoft
   https://learn.microsoft.com/en-us/dotnet/core/install/
@@ -62,8 +60,7 @@ Note that the output data structure is evolving and not final.
 
 
 
-License
--------------
+### License
 
 Copyright (c) nexB Inc. and others.
 
@@ -81,53 +78,53 @@ SPDX-License-Identifier: Apache-2.0 AND MIT
 This project is based on, depends on or embeds several fine libraries and tools.
 Here are credits for some of these key projects without which it would not exist:
 
-- ``NuGet.Client``, ``MSBuild`` and ``upgrade-assistant`` from the .NET
-  Foundation which are the core .NET tools and libraries to handled .NET and
-  NuGet projects.
-  https://github.com/NuGet/NuGet.Client/
-  https://github.com/dotnet/msbuild/
-  https://github.com/dotnet/upgrade-assistant
+- `NuGet.Client`, `MSBuild` and `upgrade-assistant` from the .NET
+  + Foundation which are the core .NET tools and libraries to handled .NET and
+  + NuGet projects.
+  + https://github.com/NuGet/NuGet.Client/
+  + https://github.com/dotnet/msbuild/
+  + https://github.com/dotnet/upgrade-assistant
 
-- ``nuget-dotnet5-inspector`` from Synopsys as forked by Mario Rivis
-  https://github.com/dxworks/nuget-dotnet5-inspector
+- `nuget-dotnet5-inspector` from Synopsys as forked by Mario Rivis
+  + https://github.com/dxworks/nuget-dotnet5-inspector
 
-- ``audit.net`` ``NugetAuditor`` and ``DevAudit`` from Sonatype
-  https://github.com/sonatype-nexus-community/DevAudit/
-  https://github.com/sonatype-nexus-community/audit.net
+- `audit.net` `NugetAuditor` and `DevAudit` from Sonatype
+  + https://github.com/sonatype-nexus-community/DevAudit/
+  + https://github.com/sonatype-nexus-community/audit.net
 
-- ``build-info`` and ``nuget-deps-tree`` from JFrog
-  https://github.com/jfrog/build-info
-  https://github.com/jfrog/nuget-deps-tree/
+- `build-info` and `nuget-deps-tree` from JFrog
+  + https://github.com/jfrog/build-info
+  + https://github.com/jfrog/nuget-deps-tree/
 
-- ``Component Detection`` and ``OSSGadget`` from Microsoft
-  https://github.com/microsoft/component-detection/
-  https://github.com/microsoft/OSSGadget
+- `Component Detection` and `OSSGadget` from Microsoft
+  + https://github.com/microsoft/component-detection/
+  + https://github.com/microsoft/OSSGadget
 
-- ``cyclonedx-dotnet`` from the OWASP Foundation
-  https://github.com/CycloneDX/cyclonedx-dotnet
+- `cyclonedx-dotnet` from the OWASP Foundation
+  + https://github.com/CycloneDX/cyclonedx-dotnet
 
-- ``DependencyCheck`` from Jeremy Long
-  https://github.com/jeremylong/DependencyCheck
+- `DependencyCheck` from Jeremy Long
+  + https://github.com/jeremylong/DependencyCheck
 
-- ``DependencyChecker`` from Fabrice Andréïs
-  https://github.com/chwebdude/DependencyChecker
+- `DependencyChecker` from Fabrice Andréïs
+  + https://github.com/chwebdude/DependencyChecker
 
-- ``dotnet-oudated`` from Jerrie Pelser and contributors
-  https://github.com/dotnet-outdated/dotnet-outdated
+- `dotnet-oudated` from Jerrie Pelser and contributors
+  + https://github.com/dotnet-outdated/dotnet-outdated
 
-- ``NugetDefense`` from Curtis Carter
-  https://github.com/digitalcoyote/NuGetDefense
+- `NugetDefense` from Curtis Carter
+  + https://github.com/digitalcoyote/NuGetDefense
 
-- ``snyk-nuget-plugin`` and ``dotnet-deps-parser`` from Snyk
-  https://github.com/snyk/snyk-nuget-plugin
-  https://github.com/snyk/dotnet-deps-parser
+- `snyk-nuget-plugin` and `dotnet-deps-parser` from Snyk
+  + https://github.com/snyk/snyk-nuget-plugin
+  + https://github.com/snyk/dotnet-deps-parser
 
-- ``verademo-dotnet`` and ``verademo-dotnetcore`` and from Veracode
-  https://github.com/veracode/verademo-dotnet
-  https://github.com/veracode/verademo-dotnetcore
+- `verademo-dotnet` and `verademo-dotnetcore` and from Veracode
+  + https://github.com/veracode/verademo-dotnet
+  + https://github.com/veracode/verademo-dotnetcore
 
-- ``dropcraft`` from Andrei Marukovich
-  https://github.com/Dropcraft/Dropcraft
+- `dropcraft` from Andrei Marukovich
+  + https://github.com/Dropcraft/Dropcraft
 
 These projects are used either in the built executables, at build time or for
 testing (a large number are used for testing). The built executables are designed
