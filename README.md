@@ -1,7 +1,11 @@
+# nu-nuget-inspector
+
 Fork of aboutcode-org's nuget-inspector.
 
 Fixes some issues of the original one as my PRs where not merged but we need them.
 
+
+# Original README
 ========================================================================
 nuget-inspector - inspect nuget and .NET projects packages dependencies
 ========================================================================
