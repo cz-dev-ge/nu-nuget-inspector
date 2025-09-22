@@ -11,17 +11,17 @@ namespace NugetInspector;
 /// </summary>
 public class PackagesConfigHelper(NugetApi nugetApi)
 {
-    private readonly Dictionary<string, ResolutionData> _ResolutionDatas = new();
+    private readonly Dictionary<string, ResolutionData> _ResolutionData = new();
 
-    private List<VersionRange?> FindAllVersionRangesFor(string id)
+    private List<VersionRange> FindAllVersionRangesFor(string id)
     {
         id = id.ToLower();
-        var result = new List<VersionRange?>();
-        foreach (var pkg in _ResolutionDatas.Values)
+        var result = new List<VersionRange>();
+        foreach (var pkg in _ResolutionData.Values)
         {
             foreach (var depPair in pkg.Dependencies)
             {
-                if (depPair.Key == id)
+                if (depPair.Key == id && depPair.Value != null)
                     result.Add(depPair.Value);
             }
         }
@@ -41,19 +41,19 @@ public class PackagesConfigHelper(NugetApi nugetApi)
         }
 
         var builder = new PackageTree();
-        foreach (var data in _ResolutionDatas.Values)
+        foreach (var data in _ResolutionData.Values)
         {
             var deps = new List<BasePackage>();
             foreach (var dep in data.Dependencies.Keys)
             {
-                if (!_ResolutionDatas.ContainsKey(dep))
+                if (!_ResolutionData.ContainsKey(dep))
                 {
                     throw new Exception($"Unable to resolve dependencies: {dep}");
                 }
 
                 deps.Add(new BasePackage(
-                    _ResolutionDatas[dep].Name!,
-                    _ResolutionDatas[dep].CurrentVersion?.ToNormalizedString()));
+                    _ResolutionData[dep].Name!,
+                    _ResolutionData[dep].CurrentVersion?.ToNormalizedString()));
             }
 
             builder.AddOrUpdatePackage(
@@ -83,9 +83,9 @@ public class PackagesConfigHelper(NugetApi nugetApi)
     {
         id = id.ToLower();
         ResolutionData data = new();
-        if (_ResolutionDatas.ContainsKey(id))
+        if (_ResolutionData.ContainsKey(id))
         {
-            data = _ResolutionDatas[id];
+            data = _ResolutionData[id];
             if (overrideRange != null)
             {
                 if (data.ExternalVersionRange == null)
@@ -98,7 +98,7 @@ public class PackagesConfigHelper(NugetApi nugetApi)
         {
             data.ExternalVersionRange = overrideRange;
             data.Name = name;
-            _ResolutionDatas[id] = data;
+            _ResolutionData[id] = data;
         }
 
         var allVersions = FindAllVersionRangesFor(id);

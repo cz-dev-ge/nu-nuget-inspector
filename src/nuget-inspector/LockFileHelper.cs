@@ -14,8 +14,14 @@ public class LockFileHelper(LockFile lockfile)
 {
     private static NuGetVersion? GetBestVersion(string name, VersionRange range, IList<LockFileTargetLibrary> libraries)
     {
-        var versions = libraries.Where(lib => lib.Name == name).Select(lib => lib.Version).ToList();
+        var versions = libraries
+            .Where(lib => lib.Name == name && lib.Version != null )
+            .Select(lib => lib.Version)
+            .Cast<NuGetVersion>()
+            .ToList();
+        
         var bestVersion = range.FindBestMatch(versions);
+        
         if (bestVersion != null)
             return bestVersion;
 
@@ -71,8 +77,9 @@ public class LockFileHelper(LockFile lockfile)
             foreach (var library in target.Libraries)
             {
                 var version = library.Version?.ToNormalizedString();
-                var package = new BasePackage(library.Name, version);
-                var dependencies = new List<BasePackage>();
+                
+                var package = new BasePackage(library.Name ?? "Error: Library name unknown", version);
+                var dependencies = new List<BasePackage?>();
                 foreach (var dependency in library.Dependencies)
                 {
                     var depName = dependency.Id;
@@ -106,6 +113,9 @@ public class LockFileHelper(LockFile lockfile)
         {
             foreach (var dep in lockfile.PackageSpec.Dependencies)
             {
+                if (dep.LibraryRange.VersionRange is null)
+                    throw new ArgumentException("Version range cannot be null");
+                
                 var version = treeBuilder.GetResolvedVersion(dep.Name, dep.LibraryRange.VersionRange);
                 resolution.Dependencies.Add(new BasePackage(dep.Name, version));
             }
@@ -124,6 +134,9 @@ public class LockFileHelper(LockFile lockfile)
             {
                 foreach (var dep in framework.Dependencies)
                 {
+                    if (dep.LibraryRange.VersionRange is null)
+                        throw new ArgumentException("Version range cannot be null");
+                    
                     var version = treeBuilder.GetResolvedVersion(dep.Name, dep.LibraryRange.VersionRange);
                     resolution.Dependencies.Add(new BasePackage(dep.Name, version));
                 }
@@ -208,7 +221,7 @@ public class LockFileHelper(LockFile lockfile)
     /// This a case that is NOT handled yet
     public static ProjectFileDependency ParseProjectFileDependencyGroup(string projectFileDependency)
     {
-        if (ParseProjectFileDependencyGroupTokens(
+        if (TryParseProjectFileDependencyGroupTokens(
                 projectFileDependency,
                 " >= ",
                 out var projectName,
@@ -221,7 +234,7 @@ public class LockFileHelper(LockFile lockfile)
                     true));
         }
 
-        if (ParseProjectFileDependencyGroupTokens(
+        if (TryParseProjectFileDependencyGroupTokens(
                 projectFileDependency,
                 " > ",
                 out var projectName2,
@@ -234,7 +247,7 @@ public class LockFileHelper(LockFile lockfile)
                     false));
         }
 
-        if (ParseProjectFileDependencyGroupTokens(
+        if (TryParseProjectFileDependencyGroupTokens(
                 projectFileDependency,
                 " <= ",
                 out var projectName3,
@@ -250,7 +263,7 @@ public class LockFileHelper(LockFile lockfile)
                     true));
         }
 
-        if (!ParseProjectFileDependencyGroupTokens(
+        if (!TryParseProjectFileDependencyGroupTokens(
                 projectFileDependency,
                 " < ",
                 out var projectName4,
@@ -266,8 +279,11 @@ public class LockFileHelper(LockFile lockfile)
                 maxVersion2));
     }
 
-    private static bool ParseProjectFileDependencyGroupTokens(string input, string tokens, out string? projectName,
-        out string? projectVersion)
+    private static bool TryParseProjectFileDependencyGroupTokens(
+        string input, 
+        string tokens,
+        [NotNullWhen(true)] out string? projectName,
+        [NotNullWhen(true)] out string? projectVersion)
     {
         if (input.Contains(tokens))
         {
@@ -285,9 +301,13 @@ public class LockFileHelper(LockFile lockfile)
     private static VersionRange MinVersionOrFloat(string? versionValueRaw, bool includeMin)
     {
         //could be Floating or MinVersion
-        return NuGetVersion.TryParse(versionValueRaw, out var minVersion) 
-            ? new VersionRange(minVersion, includeMin) 
-            : VersionRange.Parse(versionValueRaw, true);
+        if( NuGetVersion.TryParse(versionValueRaw, out var minVersion) )
+            return new VersionRange(minVersion, includeMin);
+        
+        if( versionValueRaw is null )
+            throw new ArgumentException(versionValueRaw);
+        
+        return VersionRange.Parse(versionValueRaw, true);
     }
 
     public class ProjectFileDependency(string? name, VersionRange versionRange)

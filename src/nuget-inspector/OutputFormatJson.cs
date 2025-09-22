@@ -10,7 +10,7 @@ public class ScanHeader
     #pragma warning disable IDE1006
     public string ToolName { get; set; } = "nuget-inspector";
     public string ToolHomepageurl { get; set; } = "https://github.com/nexB/nuget-inspector";
-    public string ToolVersion { get; set; } = Config.NUGET_INSPECTOR_VERSION;
+    public string ToolVersion { get; set; } = Config.NugetInspectorVersion;
     public List<string> Options { get; set; }
 
     public string ProjectFramework { get; set; } = "";

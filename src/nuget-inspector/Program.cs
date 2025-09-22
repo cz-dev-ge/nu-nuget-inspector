@@ -268,19 +268,19 @@ internal static class Program
                 Config.TRACE_OUTPUT = true;
             }
 
-            if (Config.TRACE_ARGS)
+            if (Config.TraceArgs)
                 Console.WriteLine($"argument: with-details: {options.WithDetails}");
 
             return ParsedOptions.Succeeded(options);
         }
         catch (Exception e)
         {
-            if (Config.TRACE)
-            {
-                Console.WriteLine("Failed to parse options.");
-                Console.WriteLine(e.Message);
-                Console.WriteLine(e.StackTrace);
-            }
+            if (!Config.TRACE )
+                return ParsedOptions.Failed();
+            
+            Console.WriteLine("Failed to parse options.");
+            Console.WriteLine(e.Message);
+            Console.WriteLine(e.StackTrace);
 
             return ParsedOptions.Failed();
         }

@@ -88,7 +88,7 @@ public class Options
 
         foreach (var field in typeof(Options).GetFields())
         {
-            if (Config.TRACE_ARGS) Console.WriteLine($"ParseArguments.field: {field}");
+            if (Config.TraceArgs) Console.WriteLine($"ParseArguments.field: {field}");
             var attr = GetAttr<CommandLineArgAttribute>(field);
             if (attr != null)
             {
@@ -141,13 +141,13 @@ public class Options
 
         if (options.ShowVersion)
         {
-            Console.Error.WriteLine(Config.NUGET_INSPECTOR_VERSION);
+            Console.Error.WriteLine(Config.NugetInspectorVersion);
                 return null;
         }
         if (options.ShowAbout)
         {
             Console.Error.WriteLine(
-                $"nuget-inspector v{Config.NUGET_INSPECTOR_VERSION}\n"
+                $"nuget-inspector v{Config.NugetInspectorVersion}\n"
                 + "Inspect .NET and NuGet projects and package manifests. Resolve NuGet dependencies.\n"
                 + "SPDX-License-Identifier: Apache-2.0 AND MIT\n"
                 + "Copyright (c) nexB Inc. and others.\n"
