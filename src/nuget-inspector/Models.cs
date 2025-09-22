@@ -15,12 +15,14 @@ namespace NugetInspector
         public readonly NuGetFramework? Framework;
         public readonly VersionRange? VersionRange;
         public bool IsDirect;
+        public string Type;
 
         //True only for legacy packages.config-based projects only when set there
         public bool IsDevelopmentDependency;
 
         public Dependency(
-            string? name,
+            string name,
+            string type,
             VersionRange? versionRange,
             NuGetFramework? framework = null,
             bool isDirect = false,
@@ -28,6 +30,7 @@ namespace NugetInspector
         {
             Framework = framework;
             Name = name;
+            Type = type;
             VersionRange = versionRange;
             IsDirect = isDirect;
             IsDevelopmentDependency = isDevelopmentDependency;
@@ -40,6 +43,7 @@ namespace NugetInspector
         {
             return new BasePackage(
                 Name!,
+                Type,
                 VersionRange?.MinVersion?.ToNormalizedString(),
                 Framework?.ToString()
             );
@@ -138,6 +142,12 @@ namespace NugetInspector
             }
         }
     }
+    
+    public static class ComponentType
+    {
+        public const string NuGet = "nuget";
+        public const string Project = "project";
+    }
 
     /// <summary>
     /// Package data object using purl as identifying attributes as
@@ -191,9 +201,10 @@ namespace NugetInspector
 
        public BasePackage(){}
 
-        public BasePackage(string name, string? version, string? framework = "", string? datafilePath = "")
+        public BasePackage(string name, string type, string? version, string? framework = "", string? datafilePath = "")
         {
             Name = name;
+            Type = type;
             Version = version;
             if (!string.IsNullOrWhiteSpace(framework))
                 Version = version;
@@ -205,7 +216,7 @@ namespace NugetInspector
 
         public static BasePackage FromPackage(BasePackage package, List<BasePackage> dependencies)
         {
-            return new BasePackage(package.Name, package.Version)
+            return new BasePackage(package.Name, package.Type, package.Version)
             {
                 ExtraData = package.ExtraData,
                 Dependencies = dependencies
@@ -221,6 +232,7 @@ namespace NugetInspector
 
             return new BasePackage(
                 Name,
+                Type,
                 version:Version,
                 datafilePath: DatafilePath
             )

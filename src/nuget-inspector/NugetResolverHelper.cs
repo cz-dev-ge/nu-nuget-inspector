@@ -56,12 +56,13 @@ public class NugetResolverHelper
             }
 
             if (dependency.Name != null)
-                _PackageTree.AddOrUpdatePackage(new BasePackage(dependency.Name, version));
+                _PackageTree.AddOrUpdatePackage(id: new BasePackage(name: dependency.Name, type: dependency.Type, version: version));
             return;
         }
 
         var basePackage = new BasePackage(
             dependency.Name!,
+            dependency.Type,
             psmr.Identity.Version.ToNormalizedString());
 
         var packages = _NugetApi.GetPackageDependenciesForPackage(
@@ -74,7 +75,7 @@ public class NugetResolverHelper
             var resolvedVersion = _PackageTree.GetResolvedVersion(pkg.Id, pkg.VersionRange);
             if (resolvedVersion != null)
             {
-                var basePkg = new BasePackage(pkg.Id, resolvedVersion);
+                var basePkg = new BasePackage(pkg.Id, ComponentType.NuGet, resolvedVersion);
                 dependencies.Add(basePkg);
                 if (Config.TRACE)
                     Console.WriteLine($"        dependencies.Add name: {pkg.Id}, version: {resolvedVersion}");
@@ -93,6 +94,7 @@ public class NugetResolverHelper
 
                 var dependentPackage = new BasePackage(
                     psrm.Identity.Id,
+                    ComponentType.NuGet,
                     psrm.Identity.Version.ToNormalizedString());
 
                 dependencies.Add(dependentPackage);
@@ -102,6 +104,7 @@ public class NugetResolverHelper
                 
                 Dependency pd = new(
                     pkg.Id,
+                    ComponentType.NuGet,
                     pkg.VersionRange,
                     dependency.Framework);
 

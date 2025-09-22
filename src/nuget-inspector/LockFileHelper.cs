@@ -71,14 +71,20 @@ public class LockFileHelper(LockFile lockfile)
     {
         var treeBuilder = new PackageTree();
         var resolution = new DependencyResolution();
+        var projectReferences = lockfile.Libraries
+            .Where( l => l.Type.Equals(ComponentType.Project) )
+            .Select( l =>  l.Name)
+            .ToList();
 
         foreach (var target in lockfile.Targets)
         {
             foreach (var library in target.Libraries)
             {
+                var type = library.Type;
                 var version = library.Version?.ToNormalizedString();
                 
-                var package = new BasePackage(library.Name ?? "Error: Library name unknown", version);
+                var package = new BasePackage(library.Name ?? "Error: Library name unknown", type ?? "Unknown", version);
+
                 var dependencies = new List<BasePackage?>();
                 foreach (var dependency in library.Dependencies)
                 {
@@ -94,7 +100,10 @@ public class LockFileHelper(LockFile lockfile)
                     }
                     else
                     {
-                        var depId = new BasePackage(depName, bestVersion.ToNormalizedString());
+                        var depType = projectReferences.Contains( depName) ? ComponentType.Project : ComponentType.NuGet;
+                        Console.WriteLine($"ProjectLockFile > Target > Libraries > Dependencies | Adding dependency {depType}  {depName} to dependencies");
+                        var depId = new BasePackage(depName, depType, bestVersion.ToNormalizedString());
+
                         dependencies.Add(depId);
                     }
                 }
@@ -117,7 +126,9 @@ public class LockFileHelper(LockFile lockfile)
                     throw new ArgumentException("Version range cannot be null");
                 
                 var version = treeBuilder.GetResolvedVersion(dep.Name, dep.LibraryRange.VersionRange);
-                resolution.Dependencies.Add(new BasePackage(dep.Name, version));
+                var depType1 = projectReferences.Contains( dep.Name ) ? ComponentType.Project : ComponentType.NuGet;
+                Console.WriteLine($"ProjectLockFile > PackageSpec > Dependencies | Adding dependency {depType1}  {dep.Name} to dependencies");
+                resolution.Dependencies.Add(item: new BasePackage(name: dep.Name, depType1, version: version));
             }
         }
         else
@@ -137,8 +148,11 @@ public class LockFileHelper(LockFile lockfile)
                     if (dep.LibraryRange.VersionRange is null)
                         throw new ArgumentException("Version range cannot be null");
                     
+                    var depType1 = projectReferences.Contains( dep.Name ) ? ComponentType.Project : ComponentType.NuGet;
+                    Console.WriteLine($"ProjectLockFile > PackageSpec > TargetFramework > Dependencies | Adding dependency {depType1}  {dep.Name} to dependencies");
+
                     var version = treeBuilder.GetResolvedVersion(dep.Name, dep.LibraryRange.VersionRange);
-                    resolution.Dependencies.Add(new BasePackage(dep.Name, version));
+                    resolution.Dependencies.Add(item: new BasePackage(name: dep.Name, depType1, version: version));
                 }
             }
         }
@@ -165,9 +179,16 @@ public class LockFileHelper(LockFile lockfile)
                 {
                     version = libraryVersion.ToNormalizedString();
                 }
+                
+                var name = projectDependency.GetName()!;
+
+
+                var depType1 = projectReferences.Contains( name ) ? ComponentType.Project : ComponentType.NuGet;
+                Console.WriteLine($"ProjectLockFile > ProjectFileDependencyGroups > Dependencies | Adding dependency {depType1}  {name} to dependencies");
+
 
                 resolution.Dependencies.Add(
-                    new BasePackage(projectDependency.GetName()!, version));
+                    new BasePackage(name: name, depType1, version: version));
             }
         }
 

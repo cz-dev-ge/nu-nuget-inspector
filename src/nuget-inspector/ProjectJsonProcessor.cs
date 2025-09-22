@@ -19,6 +19,7 @@ internal class ProjectJsonProcessor(string? projectName, string projectJsonPath)
         {
             var bpwd = new BasePackage(
                 package.Name,
+                ComponentType.NuGet,
                 package.LibraryRange.VersionRange?.OriginalString
             );
             resolution.Dependencies.Add(bpwd);

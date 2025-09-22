@@ -33,8 +33,10 @@ public class PackagesConfigHelper(NugetApi nugetApi)
     {
         foreach (var dependency in dependencies)
         {
+            Console.WriteLine( $"ProcessAll() Adding {dependency.Type} {dependency.Name} to builder" );
             Add(
                 dependency.Name!,
+                dependency.Type,
                 dependency.Name,
                 dependency.VersionRange,
                 dependency.Framework);
@@ -47,17 +49,20 @@ public class PackagesConfigHelper(NugetApi nugetApi)
             foreach (var dep in data.Dependencies.Keys)
             {
                 if (!_ResolutionData.ContainsKey(dep))
-                {
                     throw new Exception($"Unable to resolve dependencies: {dep}");
-                }
 
+                Console.WriteLine($"ProcessAll() Creating BasePackage {_ResolutionData[dep].Type} {_ResolutionData[dep].Name}");
                 deps.Add(new BasePackage(
                     _ResolutionData[dep].Name!,
+                    _ResolutionData[dep].Type!,
                     _ResolutionData[dep].CurrentVersion?.ToNormalizedString()));
             }
 
+            Console.WriteLine($"ProcessAll() Creating BasePackage {data.Type} {data.Name!}");
             builder.AddOrUpdatePackage(
-                new BasePackage(data.Name!,
+                new BasePackage(
+                    data.Name ?? "Unknown",
+                    data.Type ?? "Unknown",
                     data.CurrentVersion?.ToNormalizedString()),
                     deps!);
         }
@@ -65,11 +70,12 @@ public class PackagesConfigHelper(NugetApi nugetApi)
         return builder.GetPackageList();
     }
 
-    public void Add(string id, string? name, VersionRange? range, NuGetFramework? framework)
+    public void Add(string id, string type, string? name, VersionRange? range, NuGetFramework? framework)
     {
         id = id.ToLower();
         Resolve(
             id,
+            type,
             name,
             framework,
             range);
@@ -77,12 +83,14 @@ public class PackagesConfigHelper(NugetApi nugetApi)
 
     private void Resolve(
         string id,
+        string type,
         string? name,
         NuGetFramework? projectTargetFramework = null,
         VersionRange? overrideRange = null)
     {
         id = id.ToLower();
         ResolutionData data = new();
+        data.Type = type;
         if (_ResolutionData.ContainsKey(id))
         {
             data = _ResolutionData[id];
@@ -131,6 +139,7 @@ public class PackagesConfigHelper(NugetApi nugetApi)
             data.Dependencies.Add(dependency.Id.ToLower(), dependency.VersionRange);
             Resolve(
                 dependency.Id.ToLower(),
+                ComponentType.NuGet,
                 dependency.Id,
                 projectTargetFramework);
         }
@@ -142,5 +151,6 @@ public class PackagesConfigHelper(NugetApi nugetApi)
         public readonly Dictionary<string, VersionRange?> Dependencies = new();
         public VersionRange? ExternalVersionRange;
         public string? Name;
+        public string? Type;
     }
 }

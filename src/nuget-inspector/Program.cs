@@ -111,6 +111,11 @@ internal static class Program
 
             var depsTimer = Stopwatch.StartNew();
             var scanResult = scanner.RunScan();
+            
+            Console.WriteLine("## DEPENDENCIES ##");
+            foreach( var dep in scanResult.ProjectPackage.Dependencies )
+                Console.WriteLine($"{dep.Name} {dep.Type} ");
+            
             depsTimer.Stop();
 
             var metaTimer = Stopwatch.StartNew();

@@ -134,15 +134,35 @@ internal class ProjectScanner
 
         foreach (var dep in scanResult.ProjectPackage.Dependencies)
         {
+            Console.WriteLine($"ProjectScanner > FetchDependenciesMetadata |{dep.Type} {dep.Name}" );
+            if (dep.Type.Equals( ComponentType.Project))
+            {
+                Console.WriteLine($"    Internal project {dep.Name} - skipping metadata fetching");
+                continue;
+            }
+            
             dep.Update(NugetApiService, withDetails);
 
             if (Config.TRACE_META)
                 Console.WriteLine($"    Fetched for {dep.Name}@{dep.Version}");
         }
     }
+    
+    /// <summary>
+    /// Removes all dependencies from the list which are references to projects instead of packages.
+    /// </summary>
+    /// <param name="scanResult"></param>
+    public void RemoveInternalProjectDependencies(ScanResult scanResult)
+    {
+        if (Config.TRACE)
+            Console.WriteLine($"Removing dependencies which are internal project references");
+        scanResult.ProjectPackage.Dependencies = scanResult.ProjectPackage.Dependencies
+            .Where(dep => !dep.Type.Equals(ComponentType.Project) )
+            .ToList();
+    }
 
     /// <summary>
-    /// Scan the project proper and return ScanResult for this project.
+    /// Scan the project properly and return ScanResult for this project.
     /// </summary>
     /// <returns></returns>
     public ScanResult RunScan()
@@ -152,6 +172,7 @@ internal class ProjectScanner
 
         var project = new BasePackage(
             ScannerOptions.ProjectName!,
+            ComponentType.Project,
             version: ScannerOptions.ProjectVersion,
             datafilePath: ScannerOptions.ProjectFilePath
         );
@@ -174,27 +195,32 @@ internal class ProjectScanner
         IDependencyProcessor resolver;
 
         // project.assets.json is the gold standard when available
-        // TODO: make the use of lockfiles optional
+        // TODO: make the use of lock files optional
         if (FileExists(ScannerOptions.ProjectAssetsJsonPath!))
         {
             if (Config.TRACE)
-                Console.WriteLine($"  Using project-assets.json lockfile at: {ScannerOptions.ProjectAssetsJsonPath}");
+                Console.WriteLine($"  Using project.assets.json lockfile at: {ScannerOptions.ProjectAssetsJsonPath}");
             try
             {
                 resolver = new ProjectAssetsJsonProcessor(ScannerOptions.ProjectAssetsJsonPath!);
                 resolution = resolver.Resolve();
+                
+                Console.WriteLine("## DEPENDENCIES ##");
+                foreach( var dep in resolution.Dependencies )
+                    Console.WriteLine($"{dep.Name} {dep.Type} ");
+                
                 project.DatasourceId = ProjectAssetsJsonProcessor.DatasourceId;
                 project.Dependencies = resolution.Dependencies;
-                if (Config.TRACE)
-                {
-                    Console.WriteLine($"    Found #{project.Dependencies.Count} dependencies with data_source_id: {project.DatasourceId}");
-                    Console.WriteLine($"    Project resolved: {ScannerOptions.ProjectName}");
-                }
+                if (!Config.TRACE)
+                    return scanResult;
+                
+                Console.WriteLine($"    Found #{project.Dependencies.Count} dependencies with data_source_id: {project.DatasourceId}");
+                Console.WriteLine($"    Project resolved: {ScannerOptions.ProjectName}");
                 return scanResult;
             }
             catch (Exception ex)
             {
-                var message = $"    Failed to process project-assets.json lockfile: {ScannerOptions.ProjectAssetsJsonPath} with: {ex}";
+                var message = $"    Failed to process project.assets.json lockfile: {ScannerOptions.ProjectAssetsJsonPath} with: {ex}";
                 scanResult.Warnings.Add(message);
                 if (Config.TRACE) Console.WriteLine($"    {message}");
             }
