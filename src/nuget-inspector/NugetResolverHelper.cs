@@ -7,17 +7,17 @@ namespace NugetInspector;
 /// </summary>
 public class NugetResolverHelper
 {
-    private readonly PackageTree package_tree = new();
-    private readonly NugetApi nugetApi;
+    private readonly PackageTree _PackageTree = new();
+    private readonly NugetApi _NugetApi;
 
     public NugetResolverHelper(NugetApi nugetApi)
     {
-        this.nugetApi = nugetApi;
+        this._NugetApi = nugetApi;
     }
 
     public List<BasePackage> GetPackageList()
     {
-        return package_tree.GetPackageList();
+        return _PackageTree.GetPackageList();
     }
 
     public void ResolveManyOneByOne(List<Dependency> dependencies)
@@ -36,54 +36,54 @@ public class NugetResolverHelper
     public void ResolveOne(Dependency dependency)
     {
         if (Config.TRACE)
-            Console.WriteLine($"\nNugetApiHelper.ResolveOne: name: {dependency.name} range: {dependency.version_range}");
+            Console.WriteLine($"\nNugetApiHelper.ResolveOne: name: {dependency.Name} range: {dependency.VersionRange}");
 
-        if (string.IsNullOrWhiteSpace(dependency.name))
+        if (string.IsNullOrWhiteSpace(dependency.Name))
             throw new ArgumentNullException($"Dependency: {dependency} name cannot be null");
 
-        PackageSearchMetadataRegistration? psmr = nugetApi.FindPackageVersion(
-            name: dependency.name,
-            version_range: dependency.version_range);
+        var psmr = _NugetApi.FindPackageVersion(
+            name: dependency.Name,
+            versionRange: dependency.VersionRange);
 
         if (psmr == null)
         {
-            string? version = dependency.version_range?.MinVersion.ToNormalizedString();
+            var version = dependency.VersionRange?.MinVersion.ToNormalizedString();
             if (Config.TRACE)
             {
                 Console.WriteLine(
-                    $"    Failed to find package: '{dependency.name}' "
-                    + $"range: '{dependency.version_range}', picking instead min version: '{version}'");
+                    $"    Failed to find package: '{dependency.Name}' "
+                    + $"range: '{dependency.VersionRange}', picking instead min version: '{version}'");
             }
 
-            if (dependency.name != null)
-                package_tree.AddOrUpdatePackage(id: new BasePackage(name: dependency.name, version: version));
+            if (dependency.Name != null)
+                _PackageTree.AddOrUpdatePackage(id: new BasePackage(name: dependency.Name, version: version));
             return;
         }
 
-        var base_package = new BasePackage(
-            name: dependency.name!,
+        var basePackage = new BasePackage(
+            name: dependency.Name!,
             version: psmr.Identity.Version.ToNormalizedString());
 
-        IEnumerable<NuGet.Packaging.Core.PackageDependency> packages = nugetApi.GetPackageDependenciesForPackage(
+        var packages = _NugetApi.GetPackageDependenciesForPackage(
             identity: psmr.Identity,
-            framework: dependency.framework);
+            framework: dependency.Framework);
 
         var dependencies = new List<BasePackage>();
         foreach (var pkg in packages)
         {
-            var resolved_version = package_tree.GetResolvedVersion(name: pkg.Id, range: pkg.VersionRange);
-            if (resolved_version != null)
+            var resolvedVersion = _PackageTree.GetResolvedVersion(name: pkg.Id, range: pkg.VersionRange);
+            if (resolvedVersion != null)
             {
-                var base_pkg = new BasePackage(name: pkg.Id, version: resolved_version);
-                dependencies.Add(item: base_pkg);
+                var basePkg = new BasePackage(name: pkg.Id, version: resolvedVersion);
+                dependencies.Add(item: basePkg);
                 if (Config.TRACE)
-                    Console.WriteLine($"        dependencies.Add name: {pkg.Id}, version: {resolved_version}");
+                    Console.WriteLine($"        dependencies.Add name: {pkg.Id}, version: {resolvedVersion}");
             }
             else
             {
-                PackageSearchMetadataRegistration? psrm = nugetApi.FindPackageVersion(
+                var psrm = _NugetApi.FindPackageVersion(
                     name: pkg.Id,
-                    version_range: pkg.VersionRange);
+                    versionRange: pkg.VersionRange);
                 if (psrm == null)
                 {
                     if (Config.TRACE)
@@ -91,26 +91,26 @@ public class NugetResolverHelper
                     continue;
                 }
 
-                var dependent_package = new BasePackage(
+                var dependentPackage = new BasePackage(
                     name: psrm.Identity.Id,
                     version: psrm.Identity.Version.ToNormalizedString());
 
-                dependencies.Add(item: dependent_package);
+                dependencies.Add(item: dependentPackage);
 
-                if (!package_tree.DoesPackageExist(package: dependent_package))
-                {
-                    Dependency pd = new(
-                        name: pkg.Id,
-                        version_range: pkg.VersionRange,
-                        framework: dependency.framework);
+                if (_PackageTree.DoesPackageExist(package: dependentPackage))
+                    continue;
+                
+                Dependency pd = new(
+                    name: pkg.Id,
+                    versionRange: pkg.VersionRange,
+                    framework: dependency.Framework);
 
-                    ResolveOne(dependency: pd);
-                    if (Config.TRACE)
-                        Console.WriteLine($"        ResolveOne: {pkg.Id} range: {pkg.VersionRange}");
-                }
+                ResolveOne(dependency: pd);
+                if (Config.TRACE)
+                    Console.WriteLine($"        ResolveOne: {pkg.Id} range: {pkg.VersionRange}");
             }
         }
 
-        package_tree.AddOrUpdatePackage(base_package: base_package, dependencies: dependencies!);
+        _PackageTree.AddOrUpdatePackage(basePackage: basePackage, dependencies: dependencies!);
     }
 }

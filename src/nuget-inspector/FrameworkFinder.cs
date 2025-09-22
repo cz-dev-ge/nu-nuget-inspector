@@ -4,7 +4,7 @@ using NuGet.Frameworks;
 namespace NugetInspector;
 
 /// <summary>
-/// Helper module to fidn the proper project frameworj
+/// Helper module to find the proper project framework
 /// </summary>
 public static class FrameworkFinder
 {
@@ -12,17 +12,17 @@ public static class FrameworkFinder
     /// Return a tuple of (warning message or null, NuGetFramework) using either
     /// the requested framework or a found framework or a fallback to "any".
     /// </summary>
-    public static (string?, NuGetFramework) GetFramework(string? RequestedFramework, string ProjectFilePath)
+    public static (string?, NuGetFramework) GetFramework(string? requested_framework, string project_file_path)
     {
         string? framework_warning = null;
         NuGetFramework project_framework;
         // Force using the provided framework if present
-        if (!string.IsNullOrWhiteSpace(RequestedFramework))
+        if (!string.IsNullOrWhiteSpace(requested_framework))
         {
-            project_framework = NuGetFramework.ParseFolder(folderName: RequestedFramework.ToLower());
+            project_framework = NuGetFramework.ParseFolder(folderName: requested_framework.ToLower());
             if (project_framework == NuGetFramework.UnsupportedFramework)
             {
-                framework_warning = $"Unsupported framework requested: {RequestedFramework}, falling back to 'any' framework.";
+                framework_warning = $"Unsupported framework requested: {requested_framework}, falling back to 'any' framework.";
                 project_framework = NuGetFramework.AnyFramework;
             }
         }
@@ -31,12 +31,12 @@ public static class FrameworkFinder
             // TODO: Use the project model instead to obtain the framework
             // Or use the first framework found in the project
             string framework_moniker;
-            (framework_moniker, project_framework) = FindProjectTargetFramework(ProjectFilePath);
+            (framework_moniker, project_framework) = FindProjectTargetFramework(project_file_path);
             if (project_framework == NuGetFramework.UnsupportedFramework)
             {
                 project_framework = NuGetFramework.AnyFramework;
                 framework_warning = 
-                    $"Unsupported framework found: {framework_moniker} in {ProjectFilePath}, " +
+                    $"Unsupported framework found: {framework_moniker} in {project_file_path}, " +
                     $"falling back to '{project_framework.GetShortFolderName()}' framework.";
             }
         }
@@ -72,25 +72,25 @@ public static class FrameworkFinder
         foreach (XmlNode tfv in target_framework_version)
         {
             var framework_version = tfv.InnerText.Trim();
-            if (!string.IsNullOrWhiteSpace(framework_version))
-            {
-                var version = Version.Parse(framework_version.Trim('v', 'V'));
-                return (framework_version, new NuGetFramework(FrameworkConstants.FrameworkIdentifiers.Net, version));
-            }
+            if (string.IsNullOrWhiteSpace(framework_version))
+                continue;
+            
+            var version = Version.Parse(framework_version.Trim('v', 'V'));
+            return (framework_version, new NuGetFramework(FrameworkConstants.FrameworkIdentifiers.Net, version));
         }
 
         var target_frameworks = doc.GetElementsByTagName(name: "TargetFrameworks");
         foreach (XmlNode tf in target_frameworks)
         {
             var framework_monikers = tf.InnerText.Trim();
-            if (!string.IsNullOrWhiteSpace(framework_monikers))
+            if (string.IsNullOrWhiteSpace(framework_monikers))
+                continue;
+            
+            var monikers = framework_monikers.Split(";", StringSplitOptions.RemoveEmptyEntries);
+            foreach (var moniker in monikers)
             {
-                var monikers = framework_monikers.Split(";", StringSplitOptions.RemoveEmptyEntries);
-                foreach (var moniker in monikers)
-                {
-                     if (!string.IsNullOrWhiteSpace(moniker))
-                        return (moniker, NuGetFramework.ParseFolder(moniker.Trim()));
-                }
+                if (!string.IsNullOrWhiteSpace(moniker))
+                    return (moniker, NuGetFramework.ParseFolder(moniker.Trim()));
             }
         }
         // fallback to any if none are specified

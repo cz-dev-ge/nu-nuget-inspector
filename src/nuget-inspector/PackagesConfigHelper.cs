@@ -11,24 +11,24 @@ namespace NugetInspector;
 /// </summary>
 public class PackagesConfigHelper
 {
-    private readonly NugetApi NugetApi;
-    private readonly Dictionary<string, ResolutionData> ResolutionDatas = new();
+    private readonly NugetApi _NugetApi;
+    private readonly Dictionary<string, ResolutionData> _ResolutionDatas = new();
 
     public PackagesConfigHelper(NugetApi nugetApi)
     {
-        NugetApi = nugetApi;
+        _NugetApi = nugetApi;
     }
 
     private List<VersionRange?> FindAllVersionRangesFor(string id)
     {
         id = id.ToLower();
         var result = new List<VersionRange?>();
-        foreach (var pkg in ResolutionDatas.Values)
+        foreach (var pkg in _ResolutionDatas.Values)
         {
             foreach (var depPair in pkg.Dependencies)
             {
                 if (depPair.Key == id)
-                result.Add(item: depPair.Value);
+                    result.Add(item: depPair.Value);
             }
         }
 
@@ -40,32 +40,30 @@ public class PackagesConfigHelper
         foreach (var dependency in dependencies)
         {
             Add(
-                id: dependency.name!,
-                name: dependency.name,
-                range: dependency.version_range,
-                framework: dependency.framework);
+                id: dependency.Name!,
+                name: dependency.Name,
+                range: dependency.VersionRange,
+                framework: dependency.Framework);
         }
 
         var builder = new PackageTree();
-        foreach (var data in ResolutionDatas.Values)
+        foreach (var data in _ResolutionDatas.Values)
         {
             var deps = new List<BasePackage>();
             foreach (var dep in data.Dependencies.Keys)
             {
-                if (!ResolutionDatas.ContainsKey(key: dep))
+                if (!_ResolutionDatas.ContainsKey(key: dep))
                 {
                     throw new Exception($"Unable to resolve dependencies: {dep}");
                 }
-                else
-                {
-                    deps.Add(item: new BasePackage(
-                        name: ResolutionDatas[key: dep].Name!,
-                        version: ResolutionDatas[key: dep].CurrentVersion?.ToNormalizedString()));
-                }
+
+                deps.Add(item: new BasePackage(
+                    name: _ResolutionDatas[key: dep].Name!,
+                    version: _ResolutionDatas[key: dep].CurrentVersion?.ToNormalizedString()));
             }
 
             builder.AddOrUpdatePackage(
-                base_package: new BasePackage(name: data.Name!,
+                basePackage: new BasePackage(name: data.Name!,
                     version: data.CurrentVersion?.ToNormalizedString()),
                     dependencies: deps!);
         }
@@ -79,21 +77,21 @@ public class PackagesConfigHelper
         Resolve(
             id: id,
             name: name,
-            project_target_framework: framework,
+            projectTargetFramework: framework,
             overrideRange: range);
     }
 
     private void Resolve(
         string id,
         string? name,
-        NuGetFramework? project_target_framework = null,
+        NuGetFramework? projectTargetFramework = null,
         VersionRange? overrideRange = null)
     {
         id = id.ToLower();
         ResolutionData data = new();
-        if (ResolutionDatas.ContainsKey(key: id))
+        if (_ResolutionDatas.ContainsKey(key: id))
         {
-            data = ResolutionDatas[key: id];
+            data = _ResolutionDatas[key: id];
             if (overrideRange != null)
             {
                 if (data.ExternalVersionRange == null)
@@ -106,13 +104,13 @@ public class PackagesConfigHelper
         {
             data.ExternalVersionRange = overrideRange;
             data.Name = name;
-            ResolutionDatas[key: id] = data;
+            _ResolutionDatas[key: id] = data;
         }
 
         var allVersions = FindAllVersionRangesFor(id: id);
         if (data.ExternalVersionRange != null) allVersions.Add(item: data.ExternalVersionRange);
         var combo = VersionRange.CommonSubSet(ranges: allVersions);
-        var best = NugetApi.FindPackageVersion(name: id, version_range: combo);
+        var best = _NugetApi.FindPackageVersion(name: id, versionRange: combo);
 
         if (best == null)
         {
@@ -130,7 +128,7 @@ public class PackagesConfigHelper
         data.CurrentVersion = best.Identity.Version;
         data.Dependencies.Clear();
 
-        var packages = NugetApi.GetPackageDependenciesForPackage(identity: best.Identity, framework: project_target_framework);
+        var packages = _NugetApi.GetPackageDependenciesForPackage(identity: best.Identity, framework: projectTargetFramework);
         foreach (var dependency in packages)
         {
             if (!data.Dependencies.ContainsKey(key: dependency.Id.ToLower()))
@@ -139,7 +137,7 @@ public class PackagesConfigHelper
                 Resolve(
                     id: dependency.Id.ToLower(),
                     name: dependency.Id,
-                    project_target_framework: project_target_framework);
+                    projectTargetFramework: projectTargetFramework);
             }
         }
     }

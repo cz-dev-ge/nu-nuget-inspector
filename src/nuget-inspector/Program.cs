@@ -20,20 +20,20 @@ internal static class Program
             Environment.Exit(exitCode: -1);
         }
 
-        var exit_code = 0;
+        var exitCode = 0;
         var options = ParseCliArgs(args: args);
 
         if (options.Success)
         {
             var execution = ExecuteInspector(options: options.Options);
-            if (execution.ExitCode != 0) exit_code = execution.ExitCode;
+            if (execution.ExitCode != 0) exitCode = execution.ExitCode;
         }
         else
         {
-            exit_code = options.ExitCode;
+            exitCode = options.ExitCode;
         }
 
-        Environment.Exit(exitCode: exit_code);
+        Environment.Exit(exitCode: exitCode);
     }
 
     /// <summary>
@@ -41,20 +41,20 @@ internal static class Program
     /// </summary>
     public static bool Has_warnings(OutputFormatJson output)
     {
-        var has_top_level = output.scan_result.warnings.Any();
-        if (has_top_level)
+        var hasTopLevel = output.ScanResult.Warnings.Any();
+        if (hasTopLevel)
             return true;
-        bool has_package_level =  output.scan_result.project_package.warnings.Any();
-        if (has_package_level)
+        var hasPackageLevel =  output.ScanResult.ProjectPackage.Warnings.Any();
+        if (hasPackageLevel)
             return true;
-        bool has_dep_level = false;
-        foreach (var dep in output.scan_output.Dependencies)
+        var hasDepLevel = false;
+        foreach (var dep in output.ScanOutput.Dependencies)
         {
-            if (dep.warnings.Any())
-                has_dep_level = true;
+            if (dep.Warnings.Any())
+                hasDepLevel = true;
                 break;
         }
-        return has_dep_level;
+        return hasDepLevel;
     }
 
     /// <summary>
@@ -62,20 +62,20 @@ internal static class Program
     /// </summary>
     public static bool Has_errors(OutputFormatJson output)
     {
-        var has_top_level = output.scan_result.errors.Any();
-        if (has_top_level)
+        var hasTopLevel = output.ScanResult.Errors.Count != 0;
+        if (hasTopLevel)
             return true;
-        bool has_package_level =  output.scan_result.project_package.errors.Any();
-        if (has_package_level)
+        var hasPackageLevel =  output.ScanResult.ProjectPackage.Errors.Count != 0;
+        if (hasPackageLevel)
             return true;
-        bool has_dep_level = false;
-        foreach (var dep in output.scan_output.Dependencies)
+        var hasDepLevel = false;
+        foreach (var dep in output.ScanOutput.Dependencies)
         {
-            if (dep.errors.Any())
-                has_dep_level = true;
+            if (dep.Errors.Any())
+                hasDepLevel = true;
                 break;
         }
-        return has_dep_level;
+        return hasDepLevel;
     }
 
     private static ExecutionResult ExecuteInspector(Options options)
@@ -88,90 +88,90 @@ internal static class Program
 
         try
         {
-            var project_options = new ProjectScannerOptions(options: options);
+            var projectOptions = new ProjectScannerOptions(options: options);
 
-            (string? framework_warning, NuGetFramework project_framework) = FrameworkFinder.GetFramework(
-                RequestedFramework: options.TargetFramework,
-                ProjectFilePath: options.ProjectFilePath);
+            var (frameworkWarning, projectFramework) = FrameworkFinder.GetFramework(
+                requested_framework: options.TargetFramework,
+                project_file_path: options.ProjectFilePath);
 
-            project_options.ProjectFramework = project_framework.GetShortFolderName();
+            projectOptions.ProjectFramework = projectFramework.GetShortFolderName();
 
-            var nuget_api_service = new NugetApi(
-                nuget_config_path: options.NugetConfigPath,
-                project_root_path: project_options.ProjectDirectory,
-                project_framework: project_framework,
-                with_nuget_org: options.WithNuGetOrg);
+            var nugetApiService = new NugetApi(
+                nugetConfigPath: options.NugetConfigPath,
+                projectRootPath: projectOptions.ProjectDirectory,
+                projectFramework: projectFramework,
+                withNugetOrg: options.WithNuGetOrg);
 
             var scanner = new ProjectScanner(
-                options: project_options,
-                nuget_api_service: nuget_api_service,
-                project_framework: project_framework);
+                options: projectOptions,
+                nugetApiService: nugetApiService,
+                projectFramework: projectFramework);
 
-            Stopwatch scan_timer = Stopwatch.StartNew();
+            var scanTimer = Stopwatch.StartNew();
 
-            Stopwatch deps_timer = Stopwatch.StartNew();
-            ScanResult scan_result = scanner.RunScan();
-            deps_timer.Stop();
+            var depsTimer = Stopwatch.StartNew();
+            var scanResult = scanner.RunScan();
+            depsTimer.Stop();
 
-            Stopwatch meta_timer = Stopwatch.StartNew();
+            var metaTimer = Stopwatch.StartNew();
             scanner.FetchDependenciesMetadata(
-                scan_result: scan_result,
-                with_details: options.WithDetails);
-            meta_timer.Stop();
+                scanResult: scanResult,
+                withDetails: options.WithDetails);
+            metaTimer.Stop();
 
-            scan_timer.Stop();
+            scanTimer.Stop();
 
-            if (framework_warning != null)
-                scan_result.warnings.Add(framework_warning);
+            if (frameworkWarning != null)
+                scanResult.Warnings.Add(frameworkWarning);
 
             if (Config.TRACE)
             {
                 Console.WriteLine("Run summary:");
-                Console.WriteLine($"    Dependencies resolved in: {deps_timer.ElapsedMilliseconds} ms.");
-                Console.WriteLine($"    Metadata collected in:    {meta_timer.ElapsedMilliseconds} ms.");
-                Console.WriteLine($"    Scan completed in:        {scan_timer.ElapsedMilliseconds} ms.");
+                Console.WriteLine($"    Dependencies resolved in: {depsTimer.ElapsedMilliseconds} ms.");
+                Console.WriteLine($"    Metadata collected in:    {metaTimer.ElapsedMilliseconds} ms.");
+                Console.WriteLine($"    Scan completed in:        {scanTimer.ElapsedMilliseconds} ms.");
             }
 
-            var output_formatter = new OutputFormatJson(scan_result: scan_result);
-            output_formatter.Write();
+            var outputFormatter = new OutputFormatJson(scanResult: scanResult);
+            outputFormatter.Write();
 
             if (Config.TRACE_OUTPUT)
             {
                 Console.WriteLine("\n=============JSON OUTPUT================");
-                string output = JsonConvert.SerializeObject(
-                    value: output_formatter.scan_output,
+                var output = JsonConvert.SerializeObject(
+                    value: outputFormatter.ScanOutput,
                     formatting: Formatting.Indented);
                 Console.WriteLine(output);
 
                 Console.WriteLine("=======================================\n");
             }
 
-            BasePackage project_package = scan_result.project_package;
+            var projectPackage = scanResult.ProjectPackage;
 
-            bool success = scan_result.Status == ScanResult.ResultStatus.Success;
+            var success = scanResult.Status == ScanResult.ResultStatus.Success;
 
-            var with_warnings = Has_warnings(output_formatter);
-            var with_errors = Has_errors(output_formatter);
+            var withWarnings = Has_warnings(outputFormatter);
+            var withErrors = Has_errors(outputFormatter);
 
             // also consider other errors
-            if (success && with_errors)
+            if (success && withErrors)
                 success = false;
 
             if (success)
             {
-                Console.WriteLine($"\nScan Result: success: JSON file created at: {scan_result.Options!.OutputFilePath}");
-                if (with_warnings)
-                    PrintWarnings(scan_result, project_package);
+                Console.WriteLine($"\nScan Result: success: JSON file created at: {scanResult.Options!.OutputFilePath}");
+                if (withWarnings)
+                    PrintWarnings(scanResult, projectPackage);
 
-               return ExecutionResult.Succeeded();
+                return ExecutionResult.Succeeded();
             }
             else
             {
-                Console.WriteLine($"\nScan completed with Errors or Warnings: JSON file created at: {scan_result.Options!.OutputFilePath}");
-                if (with_warnings)
-                    PrintWarnings(scan_result, project_package);
-                if (with_errors)
-                    PrintErrors(scan_result, project_package);
+                Console.WriteLine($"\nScan completed with Errors or Warnings: JSON file created at: {scanResult.Options!.OutputFilePath}");
+                if (withWarnings)
+                    PrintWarnings(scanResult, projectPackage);
+                if (withErrors)
+                    PrintErrors(scanResult, projectPackage);
 
                 return ExecutionResult.Failed();
             }
@@ -182,54 +182,54 @@ internal static class Program
             return ExecutionResult.Failed();
         }
 
-        static void PrintWarnings(ScanResult scan_result, BasePackage project_package)
+        static void PrintWarnings(ScanResult scanResult, BasePackage projectPackage)
         {
-            if (scan_result.warnings.Any())
-                Console.WriteLine("    WARNING: " + string.Join(", ", scan_result.warnings));
-            if (scan_result.errors.Any())
-                Console.WriteLine("    ERROR: " + string.Join(", ", scan_result.errors));
+            if (scanResult.Warnings.Any())
+                Console.WriteLine("    WARNING: " + string.Join(", ", scanResult.Warnings));
+            if (scanResult.Errors.Any())
+                Console.WriteLine("    ERROR: " + string.Join(", ", scanResult.Errors));
 
             Console.WriteLine("\n    Errors or Warnings at the package level");
-            Console.WriteLine($"       {project_package.name}@{project_package.version} with purl: {project_package.purl}");
-            if (project_package.warnings.Any())
-                Console.WriteLine("        WARNING: " + string.Join(", ", project_package.warnings));
-            if (project_package.errors.Any())
-                Console.WriteLine("        ERROR: " + string.Join(", ", project_package.errors));
+            Console.WriteLine($"       {projectPackage.Name}@{projectPackage.Version} with purl: {projectPackage.Purl}");
+            if (projectPackage.Warnings.Any())
+                Console.WriteLine("        WARNING: " + string.Join(", ", projectPackage.Warnings));
+            if (projectPackage.Errors.Any())
+                Console.WriteLine("        ERROR: " + string.Join(", ", projectPackage.Errors));
 
             Console.WriteLine("\n        Errors or Warnings at the dependencies level");
-            foreach (var dep in project_package.GetFlatDependencies())
+            foreach (var dep in projectPackage.GetFlatDependencies())
             {
-                if (dep.warnings.Any() || dep.errors.Any())
-                {
-                    Console.WriteLine($"            {dep.name}@{dep.version} with purl: {dep.purl}");
-                    if (dep.warnings.Any())
-                        Console.WriteLine("            WARNING: " + string.Join(", ", dep.warnings));
-                    if (dep.errors.Any())
-                        Console.WriteLine("            ERROR: " + string.Join(", ", dep.errors));
-                }
+                if (dep.Warnings.Count == 0 && dep.Errors.Count == 0)
+                    continue;
+                
+                Console.WriteLine($"            {dep.Name}@{dep.Version} with purl: {dep.Purl}");
+                if (dep.Warnings.Count != 0)
+                    Console.WriteLine("            WARNING: " + string.Join(", ", dep.Warnings));
+                if (dep.Errors.Count != 0)
+                    Console.WriteLine("            ERROR: " + string.Join(", ", dep.Errors));
             }
         }
 
-        static void PrintErrors(ScanResult scan_result, BasePackage project_package)
+        static void PrintErrors(ScanResult scanResult, BasePackage projectPackage)
         {
-            if (scan_result.errors.Any())
-                Console.WriteLine("\nERROR: " + string.Join(", ", scan_result.errors));
+            if (scanResult.Errors.Count != 0)
+                Console.WriteLine("\nERROR: " + string.Join(", ", scanResult.Errors));
 
-            if (project_package.errors.Any())
+            if (projectPackage.Errors.Count != 0)
             {
                 Console.WriteLine("\nERRORS at the package level:");
-                Console.WriteLine($"    {project_package.name}@{project_package.version} with purl: {project_package.purl}");
-                Console.WriteLine("    ERROR: " + string.Join(", ", project_package.errors));
+                Console.WriteLine($"    {projectPackage.Name}@{projectPackage.Version} with purl: {projectPackage.Purl}");
+                Console.WriteLine("    ERROR: " + string.Join(", ", projectPackage.Errors));
             }
 
             Console.WriteLine("\nERRORS at the dependencies level:");
-            foreach (var dep in project_package.GetFlatDependencies())
+            foreach (var dep in projectPackage.GetFlatDependencies())
             {
-                if (dep.errors.Any())
-                {
-                    Console.WriteLine($"    ERRORS for dependency: {dep.name}@{dep.version} with purl: {dep.purl}");
-                    Console.WriteLine("    ERROR: " + string.Join(", ", dep.errors));
-                }
+                if (dep.Errors.Count == 0) 
+                    continue;
+                
+                Console.WriteLine($"    ERRORS for dependency: {dep.Name}@{dep.Version} with purl: {dep.Purl}");
+                Console.WriteLine("    ERROR: " + string.Join(", ", dep.Errors));
             }
         }
     }
@@ -317,12 +317,12 @@ internal static class Program
         public int ExitCode;
         public bool Success;
 
-        public static ExecutionResult Failed(int exit_code = -1)
+        public static ExecutionResult Failed(int exitCode = -1)
         {
             return new ExecutionResult
             {
                 Success = false,
-                ExitCode = exit_code
+                ExitCode = exitCode
             };
         }
 

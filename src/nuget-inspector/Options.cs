@@ -51,11 +51,11 @@ public class Options
     /// </summary>
     public List<string> AsCliList()
     {
-        List<string> options = new()
-        {
+        List<string> options =
+        [
             $"--project-file {ProjectFilePath}",
-            $"--json {OutputFilePath}",
-        };
+            $"--json {OutputFilePath}"
+        ];
 
         if (!string.IsNullOrWhiteSpace(TargetFramework))
             options.Add($"--target-framework {TargetFramework}");
@@ -84,7 +84,7 @@ public class Options
     public static Options? ParseArguments(string[] args)
     {
         var options = new Options();
-        var command_options = new OptionSet();
+        var commandOptions = new OptionSet();
 
         foreach (var field in typeof(Options).GetFields())
         {
@@ -92,42 +92,42 @@ public class Options
             var attr = GetAttr<CommandLineArgAttribute>(field: field);
             if (attr != null)
             {
-                command_options.Add(
+                commandOptions.Add(
                     prototype: $"{attr.Key}=",
                     description: attr.Description,
                     action: value => field.SetValue(obj: options, value: value));
             }
         }
 
-        command_options.Add(prototype: "with-details", description: "Optionally include package metadata details (such as checksum and size) when available.",
+        commandOptions.Add(prototype: "with-details", description: "Optionally include package metadata details (such as checksum and size) when available.",
             action: value => options.WithDetails = value != null);
 
-        command_options.Add(prototype: "with-fallback", description: "Optionally use a plain XML project file parser as fallback from failures.",
+        commandOptions.Add(prototype: "with-fallback", description: "Optionally use a plain XML project file parser as fallback from failures.",
             action: value => options.WithDetails = value != null);
 
-        command_options.Add(prototype: "with-nuget-org", description: "Optionally use the official, public nuget.org API as a fallback in addition to nuget.config-configured API sources.",
+        commandOptions.Add(prototype: "with-nuget-org", description: "Optionally use the official, public nuget.org API as a fallback in addition to nuget.config-configured API sources.",
             action: value => options.WithNuGetOrg = value != null);
 
-        command_options.Add(prototype: "h|help", description: "Show this message and exit.",
+        commandOptions.Add(prototype: "h|help", description: "Show this message and exit.",
             action: value => options.ShowHelp = value != null);
-        command_options.Add(prototype: "v|verbose", description: "Display more verbose output.",
+        commandOptions.Add(prototype: "v|verbose", description: "Display more verbose output.",
             action: value => options.Verbose = value != null);
-        command_options.Add(prototype: "debug", description: "Display very verbose debug output.",
+        commandOptions.Add(prototype: "debug", description: "Display very verbose debug output.",
             action: value => options.Debug = value != null);
-        command_options.Add(prototype: "version", description: "Display nuget-inspector version and exit.",
+        commandOptions.Add(prototype: "version", description: "Display nuget-inspector version and exit.",
             action: value => options.ShowVersion = value != null);
-        command_options.Add(prototype: "about", description: "Display information about nuget-inspector and exit.",
+        commandOptions.Add(prototype: "about", description: "Display information about nuget-inspector and exit.",
             action: value => options.ShowAbout = value != null);
 
         try
         {
-            command_options.Parse(arguments: args);
+            commandOptions.Parse(arguments: args);
         }
         catch (OptionException)
         {
             ShowHelpMessage(
                 message: "Error: Unexpected extra argument or option. Usage is: nuget-inspector [OPTIONS]",
-                optionSet: command_options);
+                optionSet: commandOptions);
             return null;
         }
 
@@ -135,7 +135,7 @@ public class Options
         {
             ShowHelpMessage(
                 message: "Usage: nuget-inspector [OPTIONS]",
-                optionSet: command_options);
+                optionSet: commandOptions);
             return null;
         }
 
@@ -159,7 +159,7 @@ public class Options
         {
             ShowHelpMessage(
                 message: "Error: missing required --project-file option. Usage: nuget-inspector [OPTIONS]",
-                optionSet: command_options);
+                optionSet: commandOptions);
             return null;
         }
 
@@ -167,7 +167,7 @@ public class Options
         {
             ShowHelpMessage(
                 message: "Error: missing required --json option. Usage: nuget-inspector [OPTIONS]",
-                optionSet: command_options);
+                optionSet: commandOptions);
             return null;
         }
 
@@ -188,14 +188,8 @@ public class Options
     }
 }
 
-internal class CommandLineArgAttribute : Attribute
+internal class CommandLineArgAttribute(string key, string description = "") : Attribute
 {
-    public string Description;
-    public string Key;
-
-    public CommandLineArgAttribute(string key, string description = "")
-    {
-        Key = key;
-        Description = description;
-    }
+    public readonly string Description = description;
+    public readonly string Key = key;
 }

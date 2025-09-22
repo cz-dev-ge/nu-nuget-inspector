@@ -13,15 +13,15 @@ public class ScanResult
 
     public Exception? Exception;
     public ProjectScannerOptions? Options;
-    public BasePackage project_package = new();
+    public BasePackage ProjectPackage = new();
     public ResultStatus Status;
 
-    public List<string> warnings = new();
-    public List<string> errors = new();
+    public List<string> Warnings = [];
+    public List<string> Errors = [];
 
     public void Sort()
     {
-        project_package.Sort();
+        ProjectPackage.Sort();
     }
 }
 
@@ -52,31 +52,32 @@ public class ProjectScannerOptions : Options
 
 internal class ProjectScanner
 {
-    public ProjectScannerOptions ScannerOptions;
-    public NugetApi NugetApiService;
-    public NuGetFramework project_framework;
+    public readonly ProjectScannerOptions ScannerOptions;
+    public readonly NugetApi NugetApiService;
+    public readonly NuGetFramework ProjectFramework;
 
     /// <summary>
     /// A Scanner for project "*proj" project file input such as .csproj file
     /// </summary>
     /// <param name="options"></param>
-    /// <param name="nuget_api_service"></param>
+    /// <param name="nugetApiService"></param>
+    /// <param name="projectFramework"></param>
     /// <exception cref="Exception"></exception>
     public ProjectScanner(
         ProjectScannerOptions options,
-        NugetApi nuget_api_service,
-        NuGetFramework project_framework)
+        NugetApi nugetApiService,
+        NuGetFramework projectFramework)
     {
-        static string combine_paths(string? project_directory, string file_name)
+        static string CombinePaths(string? projectDirectory, string fileName)
         {
             return Path
-                .Combine(path1: project_directory ?? string.Empty, path2: file_name)
+                .Combine(path1: projectDirectory ?? string.Empty, path2: fileName)
                 .Replace(oldValue: "\\", newValue: "/");
         }
 
-        this.ScannerOptions = options;
-        this.NugetApiService = nuget_api_service;
-        this.project_framework = project_framework;
+        ScannerOptions = options;
+        NugetApiService = nugetApiService;
+        this.ProjectFramework = projectFramework;
 
         if (string.IsNullOrWhiteSpace(value: ScannerOptions.OutputFilePath))
         {
@@ -86,21 +87,21 @@ internal class ProjectScanner
         if (string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectDirectory))
             ScannerOptions.ProjectDirectory = Directory.GetParent(path: ScannerOptions.ProjectFilePath)?.FullName ?? string.Empty;
 
-        string project_directory = ScannerOptions.ProjectDirectory;
+        var projectDirectory = ScannerOptions.ProjectDirectory;
 
-        // TODO: Also rarer files named packahes.<project name>.congig
+        // TODO: Also rarer files named packages.<project name>.config
         // See CommandLineUtility.IsValidConfigFileName(Path.GetFileName(path) 
         if (string.IsNullOrWhiteSpace(value: ScannerOptions.PackagesConfigPath))
-            ScannerOptions.PackagesConfigPath = combine_paths(project_directory, "packages.config");
+            ScannerOptions.PackagesConfigPath = CombinePaths(projectDirectory, "packages.config");
 
         if (string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectAssetsJsonPath))
-            ScannerOptions.ProjectAssetsJsonPath = combine_paths(project_directory, "obj/project.assets.json");
+            ScannerOptions.ProjectAssetsJsonPath = CombinePaths(projectDirectory, "obj/project.assets.json");
 
         if (string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectJsonPath))
-            ScannerOptions.ProjectJsonPath = combine_paths(project_directory, "project.json");
+            ScannerOptions.ProjectJsonPath = CombinePaths(projectDirectory, "project.json");
 
         if (string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectJsonLockPath))
-            ScannerOptions.ProjectJsonLockPath = combine_paths(project_directory, "project.lock.json");
+            ScannerOptions.ProjectJsonLockPath = CombinePaths(projectDirectory, "project.lock.json");
 
         if (string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectName))
         {
@@ -109,16 +110,15 @@ internal class ProjectScanner
                 Console.WriteLine($"\nProjectScanner: Using filename as project name: {ScannerOptions.ProjectName}");
         }
 
-        if (string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectVersion))
+        if (!string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectVersion))
+            return;
+        
+        ScannerOptions.ProjectVersion = AssemblyInfoParser.GetProjectAssemblyVersion(projectDirectory);
+        if (Config.TRACE)
         {
-            ScannerOptions.ProjectVersion = AssemblyInfoParser.GetProjectAssemblyVersion(project_directory);
-            if (Config.TRACE)
-            {
-                if (!string.IsNullOrWhiteSpace(ScannerOptions.ProjectVersion))
-                    Console.WriteLine($"      Using AssemblyInfoParser for project version: {ScannerOptions.ProjectVersion}");
-                else
-                    Console.WriteLine("      No project version found");
-            }
+            Console.WriteLine(!string.IsNullOrWhiteSpace(ScannerOptions.ProjectVersion)
+                ? $"      Using AssemblyInfoParser for project version: {ScannerOptions.ProjectVersion}"
+                : "      No project version found");
         }
     }
 
@@ -126,18 +126,18 @@ internal class ProjectScanner
     /// Enhance the dependencies recursively in scan results with metadata
     /// fetched from the NuGet API.
     /// </summary>
-    /// <param name="scan_result"></param>
-    public void FetchDependenciesMetadata(ScanResult scan_result, bool with_details = false)
+    /// <param name="scanResult"></param>
+    public void FetchDependenciesMetadata(ScanResult scanResult, bool withDetails = false)
     {
         if (Config.TRACE_META)
-            Console.WriteLine($"\nFetchDependenciesMetadata: with_details: {with_details}");
+            Console.WriteLine($"\nFetchDependenciesMetadata: with_details: {withDetails}");
 
-        foreach (BasePackage dep in scan_result.project_package.dependencies)
+        foreach (var dep in scanResult.ProjectPackage.Dependencies)
         {
-            dep.Update(nugetApi: NugetApiService, with_details: with_details);
+            dep.Update(nugetApi: NugetApiService, withDetails: withDetails);
 
             if (Config.TRACE_META)
-                Console.WriteLine($"    Fetched for {dep.name}@{dep.version}");
+                Console.WriteLine($"    Fetched for {dep.Name}@{dep.Version}");
         }
     }
 
@@ -153,12 +153,12 @@ internal class ProjectScanner
         var project = new BasePackage(
             name: ScannerOptions.ProjectName!,
             version: ScannerOptions.ProjectVersion,
-            datafile_path: ScannerOptions.ProjectFilePath
+            datafilePath: ScannerOptions.ProjectFilePath
         );
 
-        var scan_result = new ScanResult() {
+        var scanResult = new ScanResult() {
             Options = ScannerOptions,
-            project_package = project
+            ProjectPackage = project
         };
 
         /*
@@ -183,19 +183,19 @@ internal class ProjectScanner
             {
                 resolver = new ProjectAssetsJsonProcessor(projectAssetsJsonPath: ScannerOptions.ProjectAssetsJsonPath!);
                 resolution = resolver.Resolve();
-                project.datasource_id = ProjectAssetsJsonProcessor.DatasourceId;
-                project.dependencies = resolution.Dependencies;
+                project.DatasourceId = ProjectAssetsJsonProcessor.DatasourceId;
+                project.Dependencies = resolution.Dependencies;
                 if (Config.TRACE)
                 {
-                    Console.WriteLine($"    Found #{project.dependencies.Count} dependencies with data_source_id: {project.datasource_id}");
+                    Console.WriteLine($"    Found #{project.Dependencies.Count} dependencies with data_source_id: {project.DatasourceId}");
                     Console.WriteLine($"    Project resolved: {ScannerOptions.ProjectName}");
                 }
-                return scan_result;
+                return scanResult;
             }
             catch (Exception ex)
             {
-                string message = $"    Failed to process project-assets.json lockfile: {ScannerOptions.ProjectAssetsJsonPath} with: {ex}";
-                scan_result.warnings.Add(message);
+                var message = $"    Failed to process project-assets.json lockfile: {ScannerOptions.ProjectAssetsJsonPath} with: {ex}";
+                scanResult.Warnings.Add(message);
                 if (Config.TRACE) Console.WriteLine($"    {message}");
             }
         }
@@ -209,19 +209,19 @@ internal class ProjectScanner
             {
                 resolver = new ProjectLockJsonProcessor(projectLockJsonPath: ScannerOptions.ProjectJsonLockPath!);
                 resolution = resolver.Resolve();
-                project.datasource_id = ProjectLockJsonProcessor.DatasourceId;
-                project.dependencies = resolution.Dependencies;
+                project.DatasourceId = ProjectLockJsonProcessor.DatasourceId;
+                project.Dependencies = resolution.Dependencies;
                 if (Config.TRACE)
                 {
-                    Console.WriteLine($"    Found #{project.dependencies.Count} dependencies with data_source_id: {project.datasource_id}");
+                    Console.WriteLine($"    Found #{project.Dependencies.Count} dependencies with data_source_id: {project.DatasourceId}");
                     Console.WriteLine($"    Project resolved: {ScannerOptions.ProjectName}");
                 }
-                return scan_result;
+                return scanResult;
             }
             catch (Exception ex)
             {
-                string message = $"    Failed to process projects.json.lock lockfile: {ScannerOptions.ProjectJsonLockPath} with: {ex}";
-                scan_result.warnings.Add(message);
+                var message = $"    Failed to process projects.json.lock lockfile: {ScannerOptions.ProjectJsonLockPath} with: {ex}";
+                scanResult.Warnings.Add(message);
                 if (Config.TRACE) Console.WriteLine($"    {message}");
             }
         }
@@ -234,23 +234,23 @@ internal class ProjectScanner
             try
             {
                 resolver = new PackagesConfigProcessor(
-                    packages_config_path: ScannerOptions.PackagesConfigPath!,
-                    nuget_api: NugetApiService,
-                    project_framework: project_framework);
+                    packagesConfigPath: ScannerOptions.PackagesConfigPath!,
+                    nugetApi: NugetApiService,
+                    projectFramework: ProjectFramework);
                 resolution = resolver.Resolve();
-                project.datasource_id = PackagesConfigProcessor.DatasourceId;
-                project.dependencies = resolution.Dependencies;
+                project.DatasourceId = PackagesConfigProcessor.DatasourceId;
+                project.Dependencies = resolution.Dependencies;
                 if (Config.TRACE)
                 {
-                    Console.WriteLine($"    Found #{project.dependencies.Count} dependencies with data_source_id: {project.datasource_id}");
+                    Console.WriteLine($"    Found #{project.Dependencies.Count} dependencies with data_source_id: {project.DatasourceId}");
                     Console.WriteLine($"    Project resolved: {ScannerOptions.ProjectName}");
                 }
-                return scan_result;
+                return scanResult;
             }
             catch (Exception ex)
             {
-                string message = $"Failed to process packages.config references: {ScannerOptions.PackagesConfigPath} with: {ex}";
-                scan_result.errors.Add(message);
+                var message = $"Failed to process packages.config references: {ScannerOptions.PackagesConfigPath} with: {ex}";
+                scanResult.Errors.Add(message);
                 if (Config.TRACE) Console.WriteLine($"    {message}");
             }
         }
@@ -265,19 +265,19 @@ internal class ProjectScanner
                     projectName: ScannerOptions.ProjectName,
                     projectJsonPath: ScannerOptions.ProjectJsonPath!);
                 resolution = resolver.Resolve();
-                project.datasource_id = ProjectJsonProcessor.DatasourceId;
-                project.dependencies = resolution.Dependencies;
-                if (Config.TRACE)
-                {
-                    Console.WriteLine($"    Found #{project.dependencies.Count} dependencies with data_source_id: {project.datasource_id}");
-                    Console.WriteLine($"    Project resolved: {ScannerOptions.ProjectName}");
-                }
-                return scan_result;
+                project.DatasourceId = ProjectJsonProcessor.DatasourceId;
+                project.Dependencies = resolution.Dependencies;
+                if (!Config.TRACE)
+                    return scanResult;
+                
+                Console.WriteLine($"    Found #{project.Dependencies.Count} dependencies with data_source_id: {project.DatasourceId}");
+                Console.WriteLine($"    Project resolved: {ScannerOptions.ProjectName}");
+                return scanResult;
             }
             catch (Exception ex)
             {
-                string message = $"Failed to process project.json lockfile: {ScannerOptions.ProjectJsonPath} with: {ex}";
-                scan_result.warnings.Add(message);
+                var message = $"Failed to process project.json lockfile: {ScannerOptions.ProjectJsonPath} with: {ex}";
+                scanResult.Warnings.Add(message);
                 if (Config.TRACE) Console.WriteLine($"    {message}");
             }
         }
@@ -293,33 +293,33 @@ internal class ProjectScanner
             resolver = new ProjectFileProcessor(
                 projectPath: ScannerOptions.ProjectFilePath,
                 nugetApi: NugetApiService,
-                project_framework: project_framework);
+                projectFramework: ProjectFramework);
 
             resolution = resolver.Resolve();
 
             if (resolution.Success)
             {
-                project.datasource_id = ProjectFileProcessor.DatasourceId;
-                project.dependencies = resolution.Dependencies;
-                scan_result.Status = ScanResult.ResultStatus.Success;
+                project.DatasourceId = ProjectFileProcessor.DatasourceId;
+                project.Dependencies = resolution.Dependencies;
+                scanResult.Status = ScanResult.ResultStatus.Success;
                 if (Config.TRACE)
                 {
-                    Console.WriteLine($"    Found #{project.dependencies.Count} dependencies with data_source_id: {project.datasource_id}");
+                    Console.WriteLine($"    Found #{project.Dependencies.Count} dependencies with data_source_id: {project.DatasourceId}");
                     Console.WriteLine($"    Project resolved: {ScannerOptions.ProjectName}");
                 }
-                return scan_result;
+                return scanResult;
             }
         }
         catch (Exception ex)
         {
-            string message = $"Failed to process project file: {ScannerOptions.ProjectFilePath} with:\n{ex}";
-            scan_result.errors.Add(message);
-            scan_result.Status = ScanResult.ResultStatus.Error;
+            var message = $"Failed to process project file: {ScannerOptions.ProjectFilePath} with:\n{ex}";
+            scanResult.Errors.Add(message);
+            scanResult.Status = ScanResult.ResultStatus.Error;
             if (Config.TRACE) Console.WriteLine($"\nERROR: {message}\n");
         }
 
         if (!ScannerOptions.WithFallback)
-            return scan_result;
+            return scanResult;
 
         // In the case of older proj file we process the bare XML as a last resort option
         // bare XML is a fallback considered as an error even if returns something
@@ -331,36 +331,36 @@ internal class ProjectScanner
             resolver = new ProjectXmlFileProcessor(
             projectPath: ScannerOptions.ProjectFilePath,
             nugetApi: NugetApiService,
-            project_framework: project_framework);
+            projectFramework: ProjectFramework);
 
             resolution = resolver.Resolve();
 
-            project.datasource_id = ProjectXmlFileProcessor.DatasourceId;
-            project.dependencies = resolution.Dependencies;
+            project.DatasourceId = ProjectXmlFileProcessor.DatasourceId;
+            project.Dependencies = resolution.Dependencies;
 
             if (resolution.Success)
             {
-                project.datasource_id = ProjectFileProcessor.DatasourceId;
-                project.dependencies = resolution.Dependencies;
+                project.DatasourceId = ProjectFileProcessor.DatasourceId;
+                project.Dependencies = resolution.Dependencies;
                 if (Config.TRACE)
                 {
-                    Console.WriteLine($"    Found #{project.dependencies.Count} dependencies with data_source_id: {project.datasource_id}");
+                    Console.WriteLine($"    Found #{project.Dependencies.Count} dependencies with data_source_id: {project.DatasourceId}");
                     Console.WriteLine($"    Project resolved: {ScannerOptions.ProjectName}");
                 }
                 // even success here is a failure as we could not get the full power of a project resolution
-                scan_result.Status = ScanResult.ResultStatus.Success;
-                return scan_result;
+                scanResult.Status = ScanResult.ResultStatus.Success;
+                return scanResult;
             }
         }
         catch (Exception ex)
         {
-            string message = $"Failed to process *.*proj project file as bare XML: {ScannerOptions.ProjectFilePath} with:\n{ex}";
-            scan_result.errors.Add(message);
-            scan_result.Status = ScanResult.ResultStatus.Error;
+            var message = $"Failed to process *.*proj project file as bare XML: {ScannerOptions.ProjectFilePath} with:\n{ex}";
+            scanResult.Errors.Add(message);
+            scanResult.Status = ScanResult.ResultStatus.Error;
             if (Config.TRACE) Console.WriteLine($"\nERROR: {message}\n");
         }
 
-        return scan_result;
+        return scanResult;
     }
 
     /// <summary>

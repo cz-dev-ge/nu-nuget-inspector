@@ -4,7 +4,7 @@ public static class Config
 {
     #pragma warning disable CA2211
     public static bool TRACE = false;
-    public static bool TRACE_ARGS = false;
+    public const bool TRACE_ARGS = false;
     public static bool TRACE_NET = false;
     public static bool TRACE_DEEP = false;
     public static bool TRACE_META = false;

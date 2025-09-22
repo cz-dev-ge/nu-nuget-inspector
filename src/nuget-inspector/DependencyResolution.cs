@@ -12,7 +12,7 @@ internal interface IDependencyProcessor
 public class DependencyResolution
 {
     public bool Success { get; set; } = true;
-    public List<BasePackage> Dependencies { get; set; } = new();
+    public List<BasePackage> Dependencies { get; set; } = [];
 
     public DependencyResolution() {}
 

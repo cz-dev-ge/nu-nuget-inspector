@@ -16,8 +16,8 @@ public static class AssemblyInfoParser
 
         public AssemblyVersion(string? version, string path)
         {
-            this.Version = version;
-            this.Path = path;
+            Version = version;
+            Path = path;
         }
 
         /// <summary>
@@ -60,7 +60,7 @@ public static class AssemblyInfoParser
     {
         try
         {
-            List<AssemblyVersion?> results = Directory
+            var results = Directory
                 .GetFiles(path: project_directory!, searchPattern: "*AssemblyInfo.*",
                     searchOption: SearchOption.AllDirectories).ToList()
                 .Select(selector: path =>

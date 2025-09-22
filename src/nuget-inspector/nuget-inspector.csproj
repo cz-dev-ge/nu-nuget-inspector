@@ -41,12 +41,12 @@
 
     
     <ItemGroup>
-        <None Include="../NOTICE" Pack="true" PackagePath="NOTICE"/>
-        <None Include="../AUTHORS.rst" Pack="true" PackagePath="AUTHORS.rst"/>
-        <None Include="../mit.LICENSE" Pack="true" PackagePath="mit.LICENSE"/>
-        <None Include="../apache-2.0.LICENSE" Pack="true" PackagePath="apache-2.0.LICENSE"/>
-        <None Include="../CHANGELOG.rst" Pack="true" PackagePath="CHANGELOG.rst"/>
-        <None Include="../README.rst" Pack="true" PackagePath="README.rst"/>
+        <None Include="..\..\NOTICE" Pack="true" PackagePath="NOTICE"/>
+        <None Include="..\..\AUTHORS.rst" Pack="true" PackagePath="AUTHORS.rst"/>
+        <None Include="..\..\mit.LICENSE" Pack="true" PackagePath="mit.LICENSE"/>
+        <None Include="..\..\apache-2.0.LICENSE" Pack="true" PackagePath="apache-2.0.LICENSE"/>
+        <None Include="..\..\CHANGELOG.rst" Pack="true" PackagePath="CHANGELOG.rst"/>
+        <None Include="..\..\README.rst" Pack="true" PackagePath="README.rst"/>
     </ItemGroup>
 
     <!-- production dependencies -->

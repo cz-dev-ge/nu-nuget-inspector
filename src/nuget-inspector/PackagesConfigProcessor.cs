@@ -13,20 +13,20 @@ namespace NugetInspector;
 internal class PackagesConfigProcessor : IDependencyProcessor
 {
     public const string DatasourceId = "nuget-packages.config";
-    private readonly NugetApi nugetApi;
+    private readonly NugetApi _NugetApi;
 
-    private readonly string PackagesConfigPath;
+    private readonly string _PackagesConfigPath;
 
-    private readonly NuGetFramework project_target_framework;
+    private readonly NuGetFramework _ProjectTargetFramework;
 
     public PackagesConfigProcessor(
-        string packages_config_path,
-        NugetApi nuget_api,
-        NuGetFramework project_framework)
+        string packagesConfigPath,
+        NugetApi nugetApi,
+        NuGetFramework projectFramework)
     {
-        PackagesConfigPath = packages_config_path;
-        nugetApi = nuget_api;
-        this.project_target_framework = project_framework;
+        _PackagesConfigPath = packagesConfigPath;
+        _NugetApi = nugetApi;
+        _ProjectTargetFramework = projectFramework;
     }
 
     /// <summary>
@@ -37,14 +37,14 @@ internal class PackagesConfigProcessor : IDependencyProcessor
     {
         DependencyResolution resolution = new()
         {
-            Dependencies = new List<BasePackage>()
+            Dependencies = []
         };
         var dependencies = GetDependencies();
         var packages = CreateBasePackage(dependencies: dependencies);
         foreach (var package in packages)
         {
-            var has_package_references = packages.Any(pkg => pkg.dependencies.Contains(item: package));
-            if (!has_package_references && package != null)
+            var hasPackageReferences = packages.Any(pkg => pkg.Dependencies.Contains(item: package));
+            if (!hasPackageReferences && package != null)
                 resolution.Dependencies.Add(item: package);
         }
         return resolution;
@@ -58,7 +58,7 @@ internal class PackagesConfigProcessor : IDependencyProcessor
     private List<Dependency> GetDependencies()
     {
         Stream stream = new FileStream(
-            path: PackagesConfigPath,
+            path: _PackagesConfigPath,
             mode: FileMode.Open,
             access: FileAccess.Read);
 
@@ -66,7 +66,7 @@ internal class PackagesConfigProcessor : IDependencyProcessor
         List<PackageReference> packages = reader.GetPackages(allowDuplicatePackageIds: true).ToList();
 
         var compat = DefaultCompatibilityProvider.Instance;
-        var project_framework = this.project_target_framework;
+        var projectFramework = _ProjectTargetFramework;
 
         var dependencies = new List<Dependency>();
 
@@ -77,16 +77,16 @@ internal class PackagesConfigProcessor : IDependencyProcessor
         {
             var name = package.PackageIdentity.Id;
             var version = package.PackageIdentity.Version;
-            NuGetFramework? package_framework = package.TargetFramework;
+            var packageFramework = package.TargetFramework;
 
-            if  (package_framework?.IsUnsupported != false)
-                package_framework = NuGetFramework.AnyFramework;
+            if  (packageFramework?.IsUnsupported != false)
+                packageFramework = NuGetFramework.AnyFramework;
 
             if (Config.TRACE)
-                Console.WriteLine($"    for: {name}@{version}  project_framework: {project_framework} package_framework: {package_framework}");
+                Console.WriteLine($"    for: {name}@{version}  project_framework: {projectFramework} package_framework: {packageFramework}");
 
-            if  (project_framework?.IsUnsupported == false
-                && !compat.IsCompatible(framework: project_framework, other: package_framework))
+            if  (projectFramework?.IsUnsupported == false
+                && !compat.IsCompatible(framework: projectFramework, other: packageFramework))
             {
                 if (Config.TRACE)
                     Console.WriteLine("    incompatible frameworks");
@@ -101,10 +101,10 @@ internal class PackagesConfigProcessor : IDependencyProcessor
 
             Dependency dep = new(
                 name: name,
-                version_range: range,
-                framework: package_framework,
-                is_direct: true,
-                is_development_dependency: package.IsDevelopmentDependency);
+                versionRange: range,
+                framework: packageFramework,
+                isDirect: true,
+                isDevelopmentDependency: package.IsDevelopmentDependency);
             dependencies.Add(item: dep);
         }
 
@@ -115,8 +115,8 @@ internal class PackagesConfigProcessor : IDependencyProcessor
     {
         try
         {
-            var resolver_helper = new PackagesConfigHelper(nugetApi: nugetApi);
-            var packages = resolver_helper.ProcessAll(dependencies: dependencies);
+            var resolverHelper = new PackagesConfigHelper(nugetApi: _NugetApi);
+            var packages = resolverHelper.ProcessAll(dependencies: dependencies);
             return packages;
         }
         catch (Exception listex)
@@ -125,7 +125,7 @@ internal class PackagesConfigProcessor : IDependencyProcessor
                 Console.WriteLine($"PackagesConfigHandler.CreateBasePackage: Failed processing packages.config as list: {listex.Message}");
             try
             {
-                var resolver = new NugetResolverHelper(nugetApi: nugetApi);
+                var resolver = new NugetResolverHelper(nugetApi: _NugetApi);
                 resolver.ResolveManyOneByOne(dependencies: dependencies);
                 return resolver.GetPackageList();
             }

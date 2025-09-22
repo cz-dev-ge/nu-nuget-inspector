@@ -8,74 +8,74 @@ namespace NugetInspector;
 public class ScanHeader
 {
     #pragma warning disable IDE1006
-    public string tool_name { get; set; } = "nuget-inspector";
-    public string tool_homepageurl { get; set; } = "https://github.com/nexB/nuget-inspector";
-    public string tool_version { get; set; } = Config.NUGET_INSPECTOR_VERSION;
-    public List<string> options { get; set; }
+    public string ToolName { get; set; } = "nuget-inspector";
+    public string ToolHomepageurl { get; set; } = "https://github.com/nexB/nuget-inspector";
+    public string ToolVersion { get; set; } = Config.NUGET_INSPECTOR_VERSION;
+    public List<string> Options { get; set; }
 
-    public string project_framework { get; set; } = "";
+    public string ProjectFramework { get; set; } = "";
 
-    public string notice { get; set; } = "Dependency tree generated with nuget-inspector.\n" +
+    public string Notice { get; set; } = "Dependency tree generated with nuget-inspector.\n" +
                                          "nuget-inspector is a free software tool from nexB Inc. and others.\n" +
                                          "Visit https://github.com/nexB/nuget-inspector/ for support and download.";
 
-    public List<string> warnings { get; set; } = new();
-    public List<string> errors { get; set; } = new();
+    public List<string> Warnings { get; set; } = [];
+    public List<string> Errors { get; set; } = [];
     #pragma warning restore IDE1006
     public ScanHeader(Options options)
     {
-        this.options = options.AsCliList();
+        Options = options.AsCliList();
     }
 }
 
 public class ScanOutput
 {
     [JsonProperty(propertyName: "headers")]
-    public List<ScanHeader> Headers { get; set; } = new();
+    public List<ScanHeader> Headers { get; set; } = [];
 
     [JsonProperty(propertyName: "files")]
-    public List<ScannedFile> Files { get; set; } = new();
+    public List<ScannedFile> Files { get; set; } = [];
 
     [JsonProperty(propertyName: "packages")]
-    public List<BasePackage> Packages { get; set; } = new();
+    public List<BasePackage> Packages { get; set; } = [];
 
     [JsonProperty(propertyName: "dependencies")]
-    public List<BasePackage> Dependencies { get; set; } = new();
+    public List<BasePackage> Dependencies { get; set; } = [];
 }
 
 internal class OutputFormatJson
 {
-    public readonly ScanOutput scan_output;
-    public readonly ScanResult scan_result;
+    public readonly ScanOutput ScanOutput;
+    public readonly ScanResult ScanResult;
 
-    public OutputFormatJson(ScanResult scan_result)
+    public OutputFormatJson(ScanResult scanResult)
     {
-        scan_result.Sort();
-        this.scan_result = scan_result;
+        scanResult.Sort();
+        ScanResult = scanResult;
 
-        scan_output = new ScanOutput();
-        scan_output.Packages.Add(scan_result.project_package);
+        ScanOutput = new ScanOutput();
+        ScanOutput.Packages.Add(scanResult.ProjectPackage);
 
-        ScanHeader scan_header = new(scan_result.Options!)
+        ScanHeader scanHeader = new(scanResult.Options!)
         {
-            project_framework = scan_result.Options!.ProjectFramework!,
-            warnings = scan_result.warnings,
-            errors = scan_result.errors
+            ProjectFramework = scanResult.Options!.ProjectFramework!,
+            Warnings = scanResult.Warnings,
+            Errors = scanResult.Errors
         };
-        scan_output.Headers.Add(scan_header);
-        scan_output.Dependencies = scan_result.project_package.GetFlatDependencies();
+        ScanOutput.Headers.Add(scanHeader);
+        ScanOutput.Dependencies = scanResult.ProjectPackage.GetFlatDependencies();
     }
 
     public void Write()
     {
-        var output_file_path = scan_result.Options!.OutputFilePath;
-        using var fs = new FileStream(path: output_file_path!, mode: FileMode.Create);
+        var outputFilePath = ScanResult.Options!.OutputFilePath;
+        using var fs = new FileStream(path: outputFilePath!, mode: FileMode.Create);
         using var sw = new StreamWriter(stream: fs);
         var serializer = new JsonSerializer
         {
             Formatting = Formatting.Indented
         };
         var writer = new JsonTextWriter(textWriter: sw);
-        serializer.Serialize(jsonWriter: writer, value: scan_output);
+        serializer.Serialize(jsonWriter: writer, value: ScanOutput);
     }
 }
