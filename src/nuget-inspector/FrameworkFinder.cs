@@ -19,7 +19,7 @@ public static class FrameworkFinder
         // Force using the provided framework if present
         if (!string.IsNullOrWhiteSpace(requested_framework))
         {
-            project_framework = NuGetFramework.ParseFolder(folderName: requested_framework.ToLower());
+            project_framework = NuGetFramework.ParseFolder(requested_framework.ToLower());
             if (project_framework == NuGetFramework.UnsupportedFramework)
             {
                 framework_warning = $"Unsupported framework requested: {requested_framework}, falling back to 'any' framework.";
@@ -56,9 +56,9 @@ public static class FrameworkFinder
     public static (string, NuGetFramework) FindProjectTargetFramework(string project_file_path)
     {
         var doc = new XmlDocument();
-        doc.Load(filename: project_file_path);
+        doc.Load(project_file_path);
 
-        var target_framework = doc.GetElementsByTagName(name: "TargetFramework");
+        var target_framework = doc.GetElementsByTagName("TargetFramework");
         foreach (XmlNode tf in target_framework)
         {
             var framework_moniker = tf.InnerText.Trim();
@@ -68,7 +68,7 @@ public static class FrameworkFinder
             }
         }
 
-        var target_framework_version = doc.GetElementsByTagName(name: "TargetFrameworkVersion");
+        var target_framework_version = doc.GetElementsByTagName("TargetFrameworkVersion");
         foreach (XmlNode tfv in target_framework_version)
         {
             var framework_version = tfv.InnerText.Trim();
@@ -79,7 +79,7 @@ public static class FrameworkFinder
             return (framework_version, new NuGetFramework(FrameworkConstants.FrameworkIdentifiers.Net, version));
         }
 
-        var target_frameworks = doc.GetElementsByTagName(name: "TargetFrameworks");
+        var target_frameworks = doc.GetElementsByTagName("TargetFrameworks");
         foreach (XmlNode tf in target_frameworks)
         {
             var framework_monikers = tf.InnerText.Trim();

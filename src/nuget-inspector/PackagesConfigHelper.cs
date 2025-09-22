@@ -9,15 +9,9 @@ namespace NugetInspector;
 /// See https://learn.microsoft.com/en-us/nuget/reference/packages-config
 /// It means that only one package version can exist in the dependencies tree.
 /// </summary>
-public class PackagesConfigHelper
+public class PackagesConfigHelper(NugetApi nugetApi)
 {
-    private readonly NugetApi _NugetApi;
     private readonly Dictionary<string, ResolutionData> _ResolutionDatas = new();
-
-    public PackagesConfigHelper(NugetApi nugetApi)
-    {
-        _NugetApi = nugetApi;
-    }
 
     private List<VersionRange?> FindAllVersionRangesFor(string id)
     {
@@ -28,7 +22,7 @@ public class PackagesConfigHelper
             foreach (var depPair in pkg.Dependencies)
             {
                 if (depPair.Key == id)
-                    result.Add(item: depPair.Value);
+                    result.Add(depPair.Value);
             }
         }
 
@@ -40,10 +34,10 @@ public class PackagesConfigHelper
         foreach (var dependency in dependencies)
         {
             Add(
-                id: dependency.Name!,
-                name: dependency.Name,
-                range: dependency.VersionRange,
-                framework: dependency.Framework);
+                dependency.Name!,
+                dependency.Name,
+                dependency.VersionRange,
+                dependency.Framework);
         }
 
         var builder = new PackageTree();
@@ -52,20 +46,20 @@ public class PackagesConfigHelper
             var deps = new List<BasePackage>();
             foreach (var dep in data.Dependencies.Keys)
             {
-                if (!_ResolutionDatas.ContainsKey(key: dep))
+                if (!_ResolutionDatas.ContainsKey(dep))
                 {
                     throw new Exception($"Unable to resolve dependencies: {dep}");
                 }
 
-                deps.Add(item: new BasePackage(
-                    name: _ResolutionDatas[key: dep].Name!,
-                    version: _ResolutionDatas[key: dep].CurrentVersion?.ToNormalizedString()));
+                deps.Add(new BasePackage(
+                    _ResolutionDatas[dep].Name!,
+                    _ResolutionDatas[dep].CurrentVersion?.ToNormalizedString()));
             }
 
             builder.AddOrUpdatePackage(
-                basePackage: new BasePackage(name: data.Name!,
-                    version: data.CurrentVersion?.ToNormalizedString()),
-                    dependencies: deps!);
+                new BasePackage(data.Name!,
+                    data.CurrentVersion?.ToNormalizedString()),
+                    deps!);
         }
 
         return builder.GetPackageList();
@@ -75,10 +69,10 @@ public class PackagesConfigHelper
     {
         id = id.ToLower();
         Resolve(
-            id: id,
-            name: name,
-            projectTargetFramework: framework,
-            overrideRange: range);
+            id,
+            name,
+            framework,
+            range);
     }
 
     private void Resolve(
@@ -89,33 +83,33 @@ public class PackagesConfigHelper
     {
         id = id.ToLower();
         ResolutionData data = new();
-        if (_ResolutionDatas.ContainsKey(key: id))
+        if (_ResolutionDatas.ContainsKey(id))
         {
-            data = _ResolutionDatas[key: id];
+            data = _ResolutionDatas[id];
             if (overrideRange != null)
             {
                 if (data.ExternalVersionRange == null)
                     data.ExternalVersionRange = overrideRange;
                 else
-                    throw new Exception(message: "Cannot set more than one external version range.");
+                    throw new Exception("Cannot set more than one external version range.");
             }
         }
         else
         {
             data.ExternalVersionRange = overrideRange;
             data.Name = name;
-            _ResolutionDatas[key: id] = data;
+            _ResolutionDatas[id] = data;
         }
 
-        var allVersions = FindAllVersionRangesFor(id: id);
-        if (data.ExternalVersionRange != null) allVersions.Add(item: data.ExternalVersionRange);
-        var combo = VersionRange.CommonSubSet(ranges: allVersions);
-        var best = _NugetApi.FindPackageVersion(name: id, versionRange: combo);
+        var allVersions = FindAllVersionRangesFor(id);
+        if (data.ExternalVersionRange != null) allVersions.Add(data.ExternalVersionRange);
+        var combo = VersionRange.CommonSubSet(allVersions);
+        var best = nugetApi.FindPackageVersion(id, combo);
 
         if (best == null)
         {
             if (Config.TRACE)
-                Console.WriteLine( value: $"Unable to find package for '{id}' with versions range '{combo}'.");
+                Console.WriteLine( $"Unable to find package for '{id}' with versions range '{combo}'.");
 
             if (data.CurrentVersion == null)
                 data.CurrentVersion = combo.MinVersion;
@@ -128,17 +122,17 @@ public class PackagesConfigHelper
         data.CurrentVersion = best.Identity.Version;
         data.Dependencies.Clear();
 
-        var packages = _NugetApi.GetPackageDependenciesForPackage(identity: best.Identity, framework: projectTargetFramework);
+        var packages = nugetApi.GetPackageDependenciesForPackage(best.Identity, projectTargetFramework);
         foreach (var dependency in packages)
         {
-            if (!data.Dependencies.ContainsKey(key: dependency.Id.ToLower()))
-            {
-                data.Dependencies.Add(key: dependency.Id.ToLower(), value: dependency.VersionRange);
-                Resolve(
-                    id: dependency.Id.ToLower(),
-                    name: dependency.Id,
-                    projectTargetFramework: projectTargetFramework);
-            }
+            if (data.Dependencies.ContainsKey(dependency.Id.ToLower()))
+                continue;
+            
+            data.Dependencies.Add(dependency.Id.ToLower(), dependency.VersionRange);
+            Resolve(
+                dependency.Id.ToLower(),
+                dependency.Id,
+                projectTargetFramework);
         }
     }
 

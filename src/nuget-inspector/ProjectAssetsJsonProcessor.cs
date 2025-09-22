@@ -8,8 +8,8 @@ internal class ProjectAssetsJsonProcessor(string projectAssetsJsonPath) : IDepen
 
     public DependencyResolution Resolve()
     {
-        var lockFile = LockFileUtilities.GetLockFile(lockFilePath: projectAssetsJsonPath, logger: null);
-        var resolver = new LockFileHelper(lockfile: lockFile);
+        var lockFile = LockFileUtilities.GetLockFile(projectAssetsJsonPath, null);
+        var resolver = new LockFileHelper(lockFile);
         return resolver.Process();
     }
 }

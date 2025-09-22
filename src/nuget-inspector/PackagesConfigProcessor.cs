@@ -40,12 +40,12 @@ internal class PackagesConfigProcessor : IDependencyProcessor
             Dependencies = []
         };
         var dependencies = GetDependencies();
-        var packages = CreateBasePackage(dependencies: dependencies);
+        var packages = CreateBasePackage(dependencies);
         foreach (var package in packages)
         {
-            var hasPackageReferences = packages.Any(pkg => pkg.Dependencies.Contains(item: package));
+            var hasPackageReferences = packages.Any(pkg => pkg.Dependencies.Contains(package));
             if (!hasPackageReferences && package != null)
-                resolution.Dependencies.Add(item: package);
+                resolution.Dependencies.Add(package);
         }
         return resolution;
     }
@@ -58,12 +58,12 @@ internal class PackagesConfigProcessor : IDependencyProcessor
     private List<Dependency> GetDependencies()
     {
         Stream stream = new FileStream(
-            path: _PackagesConfigPath,
-            mode: FileMode.Open,
-            access: FileAccess.Read);
+            _PackagesConfigPath,
+            FileMode.Open,
+            FileAccess.Read);
 
-        PackagesConfigReader reader = new(stream: stream);
-        List<PackageReference> packages = reader.GetPackages(allowDuplicatePackageIds: true).ToList();
+        PackagesConfigReader reader = new(stream);
+        List<PackageReference> packages = reader.GetPackages(true).ToList();
 
         var compat = DefaultCompatibilityProvider.Instance;
         var projectFramework = _ProjectTargetFramework;
@@ -86,26 +86,26 @@ internal class PackagesConfigProcessor : IDependencyProcessor
                 Console.WriteLine($"    for: {name}@{version}  project_framework: {projectFramework} package_framework: {packageFramework}");
 
             if  (projectFramework?.IsUnsupported == false
-                && !compat.IsCompatible(framework: projectFramework, other: packageFramework))
+                && !compat.IsCompatible(projectFramework, packageFramework))
             {
                 if (Config.TRACE)
                     Console.WriteLine("    incompatible frameworks");
                 continue;
             }
             var range = new VersionRange(
-                minVersion: version,
-                includeMinVersion: true,
-                maxVersion: version,
-                includeMaxVersion: true
+                version,
+                true,
+                version,
+                true
             );
 
             Dependency dep = new(
-                name: name,
-                versionRange: range,
-                framework: packageFramework,
-                isDirect: true,
-                isDevelopmentDependency: package.IsDevelopmentDependency);
-            dependencies.Add(item: dep);
+                name,
+                range,
+                packageFramework,
+                true,
+                package.IsDevelopmentDependency);
+            dependencies.Add(dep);
         }
 
         return dependencies;
@@ -115,8 +115,8 @@ internal class PackagesConfigProcessor : IDependencyProcessor
     {
         try
         {
-            var resolverHelper = new PackagesConfigHelper(nugetApi: _NugetApi);
-            var packages = resolverHelper.ProcessAll(dependencies: dependencies);
+            var resolverHelper = new PackagesConfigHelper(_NugetApi);
+            var packages = resolverHelper.ProcessAll(dependencies);
             return packages;
         }
         catch (Exception listex)
@@ -125,8 +125,8 @@ internal class PackagesConfigProcessor : IDependencyProcessor
                 Console.WriteLine($"PackagesConfigHandler.CreateBasePackage: Failed processing packages.config as list: {listex.Message}");
             try
             {
-                var resolver = new NugetResolverHelper(nugetApi: _NugetApi);
-                resolver.ResolveManyOneByOne(dependencies: dependencies);
+                var resolver = new NugetResolverHelper(_NugetApi);
+                resolver.ResolveManyOneByOne(dependencies);
                 return resolver.GetPackageList();
             }
             catch (Exception treeex)
@@ -135,7 +135,7 @@ internal class PackagesConfigProcessor : IDependencyProcessor
                     Console.WriteLine($"PackagesConfigHandler.CreateBasePackage: Failed processing packages.config as a tree: {treeex.Message}");
                 var packages =
                     new List<BasePackage>(
-                        collection: dependencies.Select(selector: dependency => dependency.CreateEmptyBasePackage()));
+                        dependencies.Select(dependency => dependency.CreateEmptyBasePackage()));
                 return packages;
             }
         }

@@ -7,29 +7,21 @@ namespace NugetInspector;
 /// Handles legacy project.json format
 /// See https://learn.microsoft.com/en-us/nuget/archive/project-json
 /// </summary>
-internal class ProjectJsonProcessor : IDependencyProcessor
+internal class ProjectJsonProcessor(string? projectName, string projectJsonPath) : IDependencyProcessor
 {
     public const string DatasourceId = "dotnet-project.json";
-    private readonly string _ProjectJsonPath;
-    private readonly string? _ProjectName;
-
-    public ProjectJsonProcessor(string? projectName, string projectJsonPath)
-    {
-        _ProjectName = projectName;
-        _ProjectJsonPath = projectJsonPath;
-    }
 
     public DependencyResolution Resolve()
     {
         var resolution = new DependencyResolution();
-        var model = JsonPackageSpecReader.GetPackageSpec(name: _ProjectName, packageSpecPath: _ProjectJsonPath);
+        var model = JsonPackageSpecReader.GetPackageSpec(projectName, projectJsonPath);
         foreach (var package in (IList<LibraryDependency>)model.Dependencies)
         {
             var bpwd = new BasePackage(
-                name: package.Name,
-                version: package.LibraryRange.VersionRange.OriginalString
+                package.Name,
+                package.LibraryRange.VersionRange?.OriginalString
             );
-            resolution.Dependencies.Add(item: bpwd);
+            resolution.Dependencies.Add(bpwd);
         }
         return resolution;
     }

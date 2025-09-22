@@ -28,23 +28,23 @@ public static class AssemblyInfoParser
         /// <returns></returns>
         public static AssemblyVersion? ParseVersion(string path)
         {
-            var lines = new List<string>(collection: File.ReadAllLines(path: path));
-            lines = lines.FindAll(match: text => !text.Contains(value: "//"));
+            var lines = new List<string>(File.ReadAllLines(path));
+            lines = lines.FindAll(text => !text.Contains("//"));
             // Search first for AssemblyFileVersion
-            var version_lines = lines.FindAll(match: text => text.Contains(value: "AssemblyFileVersion"));
+            var version_lines = lines.FindAll(text => text.Contains("AssemblyFileVersion"));
             // The fallback to AssemblyVersion
             if (version_lines.Count == 0)
-                version_lines = lines.FindAll(match: text => text.Contains(value: "AssemblyVersion"));
+                version_lines = lines.FindAll(text => text.Contains("AssemblyVersion"));
 
             foreach (var text in version_lines)
             {
                 var version_line = text.Trim();
                 // the form is [assembly: AssemblyVersion("1.0.0.0")]
-                var start = version_line.IndexOf(value: "(", comparisonType: StringComparison.Ordinal) + 2;
-                var end = version_line.LastIndexOf(value: ")", comparisonType: StringComparison.Ordinal) - 1 - start;
-                var version = version_line.Substring(startIndex: start, length: end);
+                var start = version_line.IndexOf("(", StringComparison.Ordinal) + 2;
+                var end = version_line.LastIndexOf(")", StringComparison.Ordinal) - 1 - start;
+                var version = version_line.Substring(start, end);
                 if (Config.TRACE) Console.WriteLine($"Assembly version '{version}' in '{path}'.");
-                return new AssemblyVersion(version: version, path: path);
+                return new AssemblyVersion(version, path);
             }
 
             return null;
@@ -61,18 +61,18 @@ public static class AssemblyInfoParser
         try
         {
             var results = Directory
-                .GetFiles(path: project_directory!, searchPattern: "*AssemblyInfo.*",
-                    searchOption: SearchOption.AllDirectories).ToList()
-                .Select(selector: path =>
+                .GetFiles(project_directory!, "*AssemblyInfo.*",
+                    SearchOption.AllDirectories).ToList()
+                .Select(path =>
                 {
-                    if (!path.EndsWith(value: ".obj") && File.Exists(path: path))
+                    if (!path.EndsWith(".obj") && File.Exists(path))
                     {
-                        return AssemblyVersion.ParseVersion(path: path);
+                        return AssemblyVersion.ParseVersion(path);
                     }
 
                     return null;
                 })
-                .Where(predicate: it => it != null)
+                .Where(it => it != null)
                 .ToList();
 
             if (results.Count > 0)
@@ -87,7 +87,7 @@ public static class AssemblyInfoParser
         catch (Exception e)
         {
             if (Config.TRACE)
-                Console.WriteLine(value: $"Failed to collect AssemblyInfo version for project: {project_directory}{e.Message}");
+                Console.WriteLine($"Failed to collect AssemblyInfo version for project: {project_directory}{e.Message}");
         }
 
         return null;

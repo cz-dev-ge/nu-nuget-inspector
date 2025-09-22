@@ -43,7 +43,7 @@ public class ProjectScannerOptions : Options
     {
         ProjectFilePath = options.ProjectFilePath;
         TargetFramework = options.TargetFramework;
-        ProjectDirectory = Directory.GetParent(path: options.ProjectFilePath)?.FullName ?? string.Empty;
+        ProjectDirectory = Directory.GetParent(options.ProjectFilePath)?.FullName ?? string.Empty;
         Verbose = options.Verbose;
         NugetConfigPath = options.NugetConfigPath;
         OutputFilePath = options.OutputFilePath;
@@ -71,46 +71,46 @@ internal class ProjectScanner
         static string CombinePaths(string? projectDirectory, string fileName)
         {
             return Path
-                .Combine(path1: projectDirectory ?? string.Empty, path2: fileName)
-                .Replace(oldValue: "\\", newValue: "/");
+                .Combine(projectDirectory ?? string.Empty, fileName)
+                .Replace("\\", "/");
         }
 
         ScannerOptions = options;
         NugetApiService = nugetApiService;
         this.ProjectFramework = projectFramework;
 
-        if (string.IsNullOrWhiteSpace(value: ScannerOptions.OutputFilePath))
+        if (string.IsNullOrWhiteSpace(ScannerOptions.OutputFilePath))
         {
-            throw new Exception(message: "Missing required output JSON file path.");
+            throw new Exception("Missing required output JSON file path.");
         }
 
-        if (string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectDirectory))
-            ScannerOptions.ProjectDirectory = Directory.GetParent(path: ScannerOptions.ProjectFilePath)?.FullName ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(ScannerOptions.ProjectDirectory))
+            ScannerOptions.ProjectDirectory = Directory.GetParent(ScannerOptions.ProjectFilePath)?.FullName ?? string.Empty;
 
         var projectDirectory = ScannerOptions.ProjectDirectory;
 
         // TODO: Also rarer files named packages.<project name>.config
         // See CommandLineUtility.IsValidConfigFileName(Path.GetFileName(path) 
-        if (string.IsNullOrWhiteSpace(value: ScannerOptions.PackagesConfigPath))
+        if (string.IsNullOrWhiteSpace(ScannerOptions.PackagesConfigPath))
             ScannerOptions.PackagesConfigPath = CombinePaths(projectDirectory, "packages.config");
 
-        if (string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectAssetsJsonPath))
+        if (string.IsNullOrWhiteSpace(ScannerOptions.ProjectAssetsJsonPath))
             ScannerOptions.ProjectAssetsJsonPath = CombinePaths(projectDirectory, "obj/project.assets.json");
 
-        if (string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectJsonPath))
+        if (string.IsNullOrWhiteSpace(ScannerOptions.ProjectJsonPath))
             ScannerOptions.ProjectJsonPath = CombinePaths(projectDirectory, "project.json");
 
-        if (string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectJsonLockPath))
+        if (string.IsNullOrWhiteSpace(ScannerOptions.ProjectJsonLockPath))
             ScannerOptions.ProjectJsonLockPath = CombinePaths(projectDirectory, "project.lock.json");
 
-        if (string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectName))
+        if (string.IsNullOrWhiteSpace(ScannerOptions.ProjectName))
         {
-            ScannerOptions.ProjectName = Path.GetFileNameWithoutExtension(path: ScannerOptions.ProjectFilePath);
+            ScannerOptions.ProjectName = Path.GetFileNameWithoutExtension(ScannerOptions.ProjectFilePath);
             if (Config.TRACE)
                 Console.WriteLine($"\nProjectScanner: Using filename as project name: {ScannerOptions.ProjectName}");
         }
 
-        if (!string.IsNullOrWhiteSpace(value: ScannerOptions.ProjectVersion))
+        if (!string.IsNullOrWhiteSpace(ScannerOptions.ProjectVersion))
             return;
         
         ScannerOptions.ProjectVersion = AssemblyInfoParser.GetProjectAssemblyVersion(projectDirectory);
@@ -134,7 +134,7 @@ internal class ProjectScanner
 
         foreach (var dep in scanResult.ProjectPackage.Dependencies)
         {
-            dep.Update(nugetApi: NugetApiService, withDetails: withDetails);
+            dep.Update(NugetApiService, withDetails);
 
             if (Config.TRACE_META)
                 Console.WriteLine($"    Fetched for {dep.Name}@{dep.Version}");
@@ -151,7 +151,7 @@ internal class ProjectScanner
             Console.WriteLine($"\nRunning scan of: {ScannerOptions.ProjectFilePath} with fallback: {ScannerOptions.WithFallback}");
 
         var project = new BasePackage(
-            name: ScannerOptions.ProjectName!,
+            ScannerOptions.ProjectName!,
             version: ScannerOptions.ProjectVersion,
             datafilePath: ScannerOptions.ProjectFilePath
         );
@@ -175,13 +175,13 @@ internal class ProjectScanner
 
         // project.assets.json is the gold standard when available
         // TODO: make the use of lockfiles optional
-        if (FileExists(path: ScannerOptions.ProjectAssetsJsonPath!))
+        if (FileExists(ScannerOptions.ProjectAssetsJsonPath!))
         {
             if (Config.TRACE)
                 Console.WriteLine($"  Using project-assets.json lockfile at: {ScannerOptions.ProjectAssetsJsonPath}");
             try
             {
-                resolver = new ProjectAssetsJsonProcessor(projectAssetsJsonPath: ScannerOptions.ProjectAssetsJsonPath!);
+                resolver = new ProjectAssetsJsonProcessor(ScannerOptions.ProjectAssetsJsonPath!);
                 resolution = resolver.Resolve();
                 project.DatasourceId = ProjectAssetsJsonProcessor.DatasourceId;
                 project.Dependencies = resolution.Dependencies;
@@ -201,13 +201,13 @@ internal class ProjectScanner
         }
 
         // projects.json.lock is legacy but should be used if present
-        if (FileExists(path: ScannerOptions.ProjectJsonLockPath!))
+        if (FileExists(ScannerOptions.ProjectJsonLockPath!))
         {
             if (Config.TRACE)
                 Console.WriteLine($"  Using projects.json.lock lockfile: {ScannerOptions.ProjectJsonLockPath}");
             try
             {
-                resolver = new ProjectLockJsonProcessor(projectLockJsonPath: ScannerOptions.ProjectJsonLockPath!);
+                resolver = new ProjectLockJsonProcessor(ScannerOptions.ProjectJsonLockPath!);
                 resolution = resolver.Resolve();
                 project.DatasourceId = ProjectLockJsonProcessor.DatasourceId;
                 project.Dependencies = resolution.Dependencies;
@@ -227,16 +227,16 @@ internal class ProjectScanner
         }
 
         // packages.config is semi-legacy but should be used if present over a project file
-        if (FileExists(path: ScannerOptions.PackagesConfigPath!))
+        if (FileExists(ScannerOptions.PackagesConfigPath!))
         {
             if (Config.TRACE)
                 Console.WriteLine($"  Using packages.config references: {ScannerOptions.PackagesConfigPath}");
             try
             {
                 resolver = new PackagesConfigProcessor(
-                    packagesConfigPath: ScannerOptions.PackagesConfigPath!,
-                    nugetApi: NugetApiService,
-                    projectFramework: ProjectFramework);
+                    ScannerOptions.PackagesConfigPath!,
+                    NugetApiService,
+                    ProjectFramework);
                 resolution = resolver.Resolve();
                 project.DatasourceId = PackagesConfigProcessor.DatasourceId;
                 project.Dependencies = resolution.Dependencies;
@@ -256,14 +256,14 @@ internal class ProjectScanner
         }
 
         // project.json is legacy but should be used if present
-        if (FileExists(path: ScannerOptions.ProjectJsonPath!))
+        if (FileExists(ScannerOptions.ProjectJsonPath!))
         {
             if (Config.TRACE) Console.WriteLine($"  Using legacy project.json lockfile: {ScannerOptions.ProjectJsonPath}");
             try
             {
                 resolver = new ProjectJsonProcessor(
-                    projectName: ScannerOptions.ProjectName,
-                    projectJsonPath: ScannerOptions.ProjectJsonPath!);
+                    ScannerOptions.ProjectName,
+                    ScannerOptions.ProjectJsonPath!);
                 resolution = resolver.Resolve();
                 project.DatasourceId = ProjectJsonProcessor.DatasourceId;
                 project.Dependencies = resolution.Dependencies;
@@ -291,9 +291,9 @@ internal class ProjectScanner
         try
         {
             resolver = new ProjectFileProcessor(
-                projectPath: ScannerOptions.ProjectFilePath,
-                nugetApi: NugetApiService,
-                projectFramework: ProjectFramework);
+                ScannerOptions.ProjectFilePath,
+                NugetApiService,
+                ProjectFramework);
 
             resolution = resolver.Resolve();
 
@@ -329,9 +329,9 @@ internal class ProjectScanner
         try
         {
             resolver = new ProjectXmlFileProcessor(
-            projectPath: ScannerOptions.ProjectFilePath,
-            nugetApi: NugetApiService,
-            projectFramework: ProjectFramework);
+            ScannerOptions.ProjectFilePath,
+            NugetApiService,
+            ProjectFramework);
 
             resolution = resolver.Resolve();
 
@@ -370,6 +370,6 @@ internal class ProjectScanner
     /// <returns>bool</returns>
     private static bool FileExists(string path)
     {
-        return !string.IsNullOrWhiteSpace(value: path) && File.Exists(path: path);
+        return !string.IsNullOrWhiteSpace(path) && File.Exists(path);
     }
 }

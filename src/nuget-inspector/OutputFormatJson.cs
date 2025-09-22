@@ -30,16 +30,16 @@ public class ScanHeader
 
 public class ScanOutput
 {
-    [JsonProperty(propertyName: "headers")]
+    [JsonProperty("headers")]
     public List<ScanHeader> Headers { get; set; } = [];
 
-    [JsonProperty(propertyName: "files")]
+    [JsonProperty("files")]
     public List<ScannedFile> Files { get; set; } = [];
 
-    [JsonProperty(propertyName: "packages")]
+    [JsonProperty("packages")]
     public List<BasePackage> Packages { get; set; } = [];
 
-    [JsonProperty(propertyName: "dependencies")]
+    [JsonProperty("dependencies")]
     public List<BasePackage> Dependencies { get; set; } = [];
 }
 
@@ -69,13 +69,13 @@ internal class OutputFormatJson
     public void Write()
     {
         var outputFilePath = ScanResult.Options!.OutputFilePath;
-        using var fs = new FileStream(path: outputFilePath!, mode: FileMode.Create);
-        using var sw = new StreamWriter(stream: fs);
+        using var fs = new FileStream(outputFilePath!, FileMode.Create);
+        using var sw = new StreamWriter(fs);
         var serializer = new JsonSerializer
         {
             Formatting = Formatting.Indented
         };
-        var writer = new JsonTextWriter(textWriter: sw);
-        serializer.Serialize(jsonWriter: writer, value: ScanOutput);
+        var writer = new JsonTextWriter(sw);
+        serializer.Serialize(writer, ScanOutput);
     }
 }

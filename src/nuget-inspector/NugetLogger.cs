@@ -10,66 +10,66 @@ public class NugetLogger : ILogger
 {
     public void LogDebug(string data)
     {
-        Trace.WriteLine(message: $"DEBUG: {data}");
+        Trace.WriteLine($"DEBUG: {data}");
     }
 
     public void LogVerbose(string data)
     {
-        Trace.WriteLine(message: $"VERBOSE: {data}");
+        Trace.WriteLine($"VERBOSE: {data}");
     }
 
     public void LogInformation(string data)
     {
-        Trace.WriteLine(message: $"INFORMATION: {data}");
+        Trace.WriteLine($"INFORMATION: {data}");
     }
 
     public void LogMinimal(string data)
     {
-        Trace.WriteLine(message: $"MINIMAL: {data}");
+        Trace.WriteLine($"MINIMAL: {data}");
     }
 
     public void LogWarning(string data)
     {
-        Trace.WriteLine(message: $"WARNING: {data}");
+        Trace.WriteLine($"WARNING: {data}");
     }
 
     public void LogError(string data)
     {
-        Trace.WriteLine(message: $"ERROR: {data}");
+        Trace.WriteLine($"ERROR: {data}");
     }
 
     public void LogInformationSummary(string data)
     {
-        Trace.WriteLine(message: $"INFORMATION SUMMARY: {data}");
+        Trace.WriteLine($"INFORMATION SUMMARY: {data}");
     }
 
     public void Log(LogLevel level, string data)
     {
-        Trace.WriteLine(message: $"{level}: {data}");
+        Trace.WriteLine($"{level}: {data}");
     }
 
     public Task LogAsync(LogLevel level, string data)
     {
-        return Task.Run(action: () => Trace.WriteLine(message: $"{level}: {data}"));
+        return Task.Run(() => Trace.WriteLine($"{level}: {data}"));
     }
 
     public void Log(ILogMessage message)
     {
-        Trace.WriteLine(message: $"{message.Level}: {message.Message}");
+        Trace.WriteLine($"{message.Level}: {message.Message}");
     }
 
     public Task LogAsync(ILogMessage message)
     {
-        return Task.Run(action: () => Trace.WriteLine(message: $"{message.Level}: {message.Message}"));
+        return Task.Run(() => Trace.WriteLine($"{message.Level}: {message.Message}"));
     }
 
     public static void LogSummary(string data)
     {
-        Trace.WriteLine(message: $"SUMMARY: {data}");
+        Trace.WriteLine($"SUMMARY: {data}");
     }
 
     public static void LogErrorSummary(string data)
     {
-        Trace.WriteLine(message: $"ERROR SUMMARY: {data}");
+        Trace.WriteLine($"ERROR SUMMARY: {data}");
     }
 }

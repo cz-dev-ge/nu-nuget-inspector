@@ -17,15 +17,15 @@ internal static class Program
         catch (Exception e)
         {
             Console.WriteLine($"Failed to register MSBuild defaults: {e}");
-            Environment.Exit(exitCode: -1);
+            Environment.Exit(-1);
         }
 
         var exitCode = 0;
-        var options = ParseCliArgs(args: args);
+        var options = ParseCliArgs(args);
 
         if (options.Success)
         {
-            var execution = ExecuteInspector(options: options.Options);
+            var execution = ExecuteInspector(options.Options);
             if (execution.ExitCode != 0) exitCode = execution.ExitCode;
         }
         else
@@ -33,7 +33,7 @@ internal static class Program
             exitCode = options.ExitCode;
         }
 
-        Environment.Exit(exitCode: exitCode);
+        Environment.Exit(exitCode);
     }
 
     /// <summary>
@@ -83,29 +83,29 @@ internal static class Program
         if (Config.TRACE)
         {
             Console.WriteLine("\nnuget-inspector options:");
-            options.Print(indent: 4);
+            options.Print(4);
         }
 
         try
         {
-            var projectOptions = new ProjectScannerOptions(options: options);
+            var projectOptions = new ProjectScannerOptions(options);
 
             var (frameworkWarning, projectFramework) = FrameworkFinder.GetFramework(
-                requested_framework: options.TargetFramework,
-                project_file_path: options.ProjectFilePath);
+                options.TargetFramework,
+                options.ProjectFilePath);
 
             projectOptions.ProjectFramework = projectFramework.GetShortFolderName();
 
             var nugetApiService = new NugetApi(
-                nugetConfigPath: options.NugetConfigPath,
-                projectRootPath: projectOptions.ProjectDirectory,
-                projectFramework: projectFramework,
-                withNugetOrg: options.WithNuGetOrg);
+                options.NugetConfigPath,
+                projectOptions.ProjectDirectory,
+                projectFramework,
+                options.WithNuGetOrg);
 
             var scanner = new ProjectScanner(
-                options: projectOptions,
-                nugetApiService: nugetApiService,
-                projectFramework: projectFramework);
+                projectOptions,
+                nugetApiService,
+                projectFramework);
 
             var scanTimer = Stopwatch.StartNew();
 
@@ -115,8 +115,8 @@ internal static class Program
 
             var metaTimer = Stopwatch.StartNew();
             scanner.FetchDependenciesMetadata(
-                scanResult: scanResult,
-                withDetails: options.WithDetails);
+                scanResult,
+                options.WithDetails);
             metaTimer.Stop();
 
             scanTimer.Stop();
@@ -132,15 +132,15 @@ internal static class Program
                 Console.WriteLine($"    Scan completed in:        {scanTimer.ElapsedMilliseconds} ms.");
             }
 
-            var outputFormatter = new OutputFormatJson(scanResult: scanResult);
+            var outputFormatter = new OutputFormatJson(scanResult);
             outputFormatter.Write();
 
             if (Config.TRACE_OUTPUT)
             {
                 Console.WriteLine("\n=============JSON OUTPUT================");
                 var output = JsonConvert.SerializeObject(
-                    value: outputFormatter.ScanOutput,
-                    formatting: Formatting.Indented);
+                    outputFormatter.ScanOutput,
+                    Formatting.Indented);
                 Console.WriteLine(output);
 
                 Console.WriteLine("=======================================\n");
@@ -238,14 +238,14 @@ internal static class Program
     {
         try
         {
-            var options = Options.ParseArguments(args: args);
+            var options = Options.ParseArguments(args);
 
             if (options == null)
             {
                 return ParsedOptions.Failed();
             }
 
-            if (string.IsNullOrWhiteSpace(value: options.ProjectFilePath))
+            if (string.IsNullOrWhiteSpace(options.ProjectFilePath))
             {
                 if (Config.TRACE)
                 {
@@ -271,7 +271,7 @@ internal static class Program
             if (Config.TRACE_ARGS)
                 Console.WriteLine($"argument: with-details: {options.WithDetails}");
 
-            return ParsedOptions.Succeeded(options: options);
+            return ParsedOptions.Succeeded(options);
         }
         catch (Exception e)
         {

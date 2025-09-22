@@ -39,9 +39,9 @@ namespace NugetInspector
         public BasePackage CreateEmptyBasePackage()
         {
             return new BasePackage(
-                name: Name!,
-                version: VersionRange?.MinVersion.ToNormalizedString(),
-                framework: Framework?.ToString()
+                Name!,
+                VersionRange?.MinVersion?.ToNormalizedString(),
+                Framework?.ToString()
             );
         }
     }
@@ -53,23 +53,21 @@ namespace NugetInspector
 
         public bool DoesPackageExist(BasePackage package)
         {
-            return _BasePackageDepsByBasePackage.ContainsKey(key: package);
+            return _BasePackageDepsByBasePackage.ContainsKey(package);
         }
 
         public BasePackage GetOrCreateBasePackage(BasePackage package)
         {
-            if (_BasePackageDepsByBasePackage.TryGetValue(key: package, value: out var packageWithDeps))
+            if (_BasePackageDepsByBasePackage.TryGetValue(package, out var packageWithDeps))
             {
                 return packageWithDeps;
             }
 
-            packageWithDeps = BasePackage.FromPackage(package: package, dependencies: []);
-            _BasePackageDepsByBasePackage[key: package] = packageWithDeps;
+            packageWithDeps = BasePackage.FromPackage(package, []);
+            _BasePackageDepsByBasePackage[package] = packageWithDeps;
 
-            _ = NuGetVersion.TryParse(value: package.Version, version: out var version);
-
-            if (package.Version != null)
-                _VersionsPairByBasePackage[key: package] = new VersionPair(rawVersion: package.Version, version: version);
+            if ( package.Version!= null &&  NuGetVersion.TryParse(package.Version, out var version))
+                _VersionsPairByBasePackage[package] = new VersionPair(package.Version, version);
 
             return packageWithDeps;
         }
@@ -80,7 +78,7 @@ namespace NugetInspector
         /// <param name="id"></param>
         public void AddOrUpdatePackage(BasePackage id)
         {
-            GetOrCreateBasePackage(package: id);
+            GetOrCreateBasePackage(id);
         }
 
         /// <summary>
@@ -90,8 +88,8 @@ namespace NugetInspector
         /// <param name="dependency"></param>
         public void AddOrUpdatePackage(BasePackage id, BasePackage dependency)
         {
-            var packageSet = GetOrCreateBasePackage(package: id);
-            packageSet.Dependencies.Add(item: dependency);
+            var packageSet = GetOrCreateBasePackage(id);
+            packageSet.Dependencies.Add(dependency);
         }
 
         /// <summary>
@@ -99,16 +97,13 @@ namespace NugetInspector
         /// </summary>
         /// <param name="basePackage"></param>
         /// <param name="dependencies"></param>
-        public void AddOrUpdatePackage(BasePackage basePackage, List<BasePackage> dependencies)
+        public void AddOrUpdatePackage(BasePackage basePackage, List<BasePackage?> dependencies)
         {
-            var packageWithDeps = GetOrCreateBasePackage(package: basePackage);
-            foreach (var dep in dependencies)
-            {
-                if (dep != null)
-                {
-                    packageWithDeps.Dependencies.Add(dep);
-                }
-            }
+            var packageWithDeps = GetOrCreateBasePackage(basePackage);
+            
+            foreach (var dep in dependencies.OfType<BasePackage>())
+                packageWithDeps.Dependencies.Add(dep);
+            
             packageWithDeps.Dependencies = packageWithDeps.Dependencies.Distinct().ToList();
         }
 
@@ -119,9 +114,9 @@ namespace NugetInspector
 
         public string? GetResolvedVersion(string name, VersionRange range)
         {
-            var allVersions = _VersionsPairByBasePackage.Keys.Where(predicate: key => key.Name == name)
-                .Select(selector: key => _VersionsPairByBasePackage[key: key]);
-            var best = range.FindBestMatch(versions: allVersions.Select(selector: ver => ver.Version));
+            var allVersions = _VersionsPairByBasePackage.Keys.Where(key => key.Name == name)
+                .Select(key => _VersionsPairByBasePackage[key]);
+            var best = range.FindBestMatch(allVersions.Select(ver => ver.Version));
             foreach (var pair in _VersionsPairByBasePackage)
             {
                 if (pair.Key.Name == name && pair.Value.Version == best)
@@ -153,7 +148,7 @@ namespace NugetInspector
     public class BasePackage : IEquatable<BasePackage>, IComparable<BasePackage>
     {
         public string Type { get; set; } = "nuget";
-        [JsonProperty(propertyName: "namespace")]
+        [JsonProperty("namespace")]
         public string Namespace { get; set; } = "";
         public string Name { get; set; } = "";
         public string? Version { get; set; } = "";
@@ -210,7 +205,7 @@ namespace NugetInspector
 
         public static BasePackage FromPackage(BasePackage package, List<BasePackage> dependencies)
         {
-            return new BasePackage(name: package.Name, version: package.Version)
+            return new BasePackage(package.Name, package.Version)
             {
                 ExtraData = package.ExtraData,
                 Dependencies = dependencies
@@ -225,7 +220,7 @@ namespace NugetInspector
             var deps = withDeps ? Dependencies : [];
 
             return new BasePackage(
-                name: Name,
+                Name,
                 version:Version,
                 datafilePath: DatafilePath
             )
@@ -296,9 +291,9 @@ namespace NugetInspector
         public PackageIdentity GetPackageIdentity()
         {
             if (!string.IsNullOrWhiteSpace(Version))
-                return new PackageIdentity(id: Name, version: new NuGetVersion(Version));
+                return new PackageIdentity(Name, new NuGetVersion(Version));
             else
-                return new PackageIdentity(id: Name, version: null);
+                return new PackageIdentity(Name, null);
         }
 
         /// <summary>
@@ -318,7 +313,7 @@ namespace NugetInspector
 
             try
             {
-                UpdateWithRemoteMetadata(nugetApi, withDetails: withDetails);
+                UpdateWithRemoteMetadata(nugetApi, withDetails);
             }
             catch (Exception ex)
             {
@@ -329,7 +324,7 @@ namespace NugetInspector
             HasUpdatedMetadata = true;
 
             foreach (var dep in Dependencies)
-                dep.Update(nugetApi, withDetails: withDetails);
+                dep.Update(nugetApi, withDetails);
         }
 
         /// <summary>
@@ -339,29 +334,29 @@ namespace NugetInspector
         {
             {
                 var pid = GetPackageIdentity();
-                var psmr = nugetApi.FindPackageVersion(pid: pid);
+                var psmr = nugetApi.FindPackageVersion(pid);
 
                 // TODO: need to add an error to errors
                 if (psmr == null)
                     return;
 
                 // Also fetch download URL and package hash
-                var download = nugetApi.GetPackageDownload(identity: pid, withDetails: withDetails);
-                var spdi = nugetApi.GetResolvedSourcePackageDependencyInfo(pid, framework: null);
+                var download = nugetApi.GetPackageDownload(pid, withDetails);
+                var spdi = nugetApi.GetResolvedSourcePackageDependencyInfo(pid, null);
                 NuspecReader? nuspec = null;
                 if (spdi != null && download != null && withDetails)
                 {
                     nuspec = nugetApi.GetNuspecDetails(
-                        identity: pid,
-                        downloadUrl: download.DownloadUrl,
-                        sourceRepo: spdi.Source);
+                        pid,
+                        download.DownloadUrl,
+                        spdi.Source);
                 }
 
                 UpdateAttributes(
-                    metadata: psmr,
-                    download: download,
-                    spdi: spdi,
-                    nuspec: nuspec);
+                    psmr,
+                    download,
+                    spdi,
+                    nuspec);
             }
         }
 
@@ -428,7 +423,7 @@ namespace NugetInspector
                 if (!string.IsNullOrWhiteSpace(tags))
                 {
                     tags = tags.Trim();
-                    Keywords = tags.Split(separator: ", ", options: StringSplitOptions.RemoveEmptyEntries).ToList();
+                    Keywords = tags.Split(", ", StringSplitOptions.RemoveEmptyEntries).ToList();
                 }
 
                 if (metadata.ProjectUrl != null)
@@ -501,7 +496,7 @@ namespace NugetInspector
                 try
                 {
                     if (spdi != null && metadata != null)
-                        ApiDataUrl = GetApiDataUrl(pid: metadata.Identity, spdi: spdi);
+                        ApiDataUrl = GetApiDataUrl(metadata.Identity, spdi);
                 }
                 catch (Exception ex)
                 {

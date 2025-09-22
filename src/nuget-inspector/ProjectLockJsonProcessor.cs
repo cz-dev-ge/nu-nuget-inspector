@@ -11,10 +11,10 @@ internal class ProjectLockJsonProcessor(string projectLockJsonPath) : IDependenc
 
     public DependencyResolution Resolve()
     {
-        var lockFile = LockFileUtilities.GetLockFile(lockFilePath: projectLockJsonPath, logger: new NugetLogger());
+        var lockFile = LockFileUtilities.GetLockFile(projectLockJsonPath, new NugetLogger());
         if (lockFile == null)
             throw new Exception($"Failed to get parse lockfile at path: {projectLockJsonPath}");
-        var resolver = new LockFileHelper(lockfile: lockFile);
+        var resolver = new LockFileHelper(lockFile);
         if (Config.TRACE) Console.WriteLine($"resolver: {resolver}");
         return resolver.Process();
     }
