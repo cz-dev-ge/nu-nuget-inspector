@@ -39,11 +39,11 @@ public class Options
     /// <summary>
     /// Print the values of this options object to the console.
     /// </summary>
-    public void Print(int indent=0)
+    public void LogTrace(int indent=0)
     {
         string margin = new (' ', indent);
         foreach (var opt in AsCliList())
-            Console.WriteLine($"{margin}{opt}");
+            Log.Trace($"{margin}{opt}");
     }
 
     /// <summary>
@@ -88,7 +88,7 @@ public class Options
 
         foreach (var field in typeof(Options).GetFields())
         {
-            if (Config.TraceArgs) Console.WriteLine($"ParseArguments.field: {field}");
+            if (Config.TRACE_ARGS) Console.WriteLine($"ParseArguments.field: {field}");
             var attr = GetAttr<CommandLineArgAttribute>(field);
             if (attr != null)
             {
