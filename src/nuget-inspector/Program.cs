@@ -41,10 +41,10 @@ internal static class Program
     /// </summary>
     public static bool HasWarnings(OutputFormatJson output)
     {
-        var hasTopLevel = output.ScanResult.Warnings.Any();
+        var hasTopLevel = output.ScanResult.Warnings.Count != 0;
         if (hasTopLevel)
             return true;
-        var hasPackageLevel =  output.ScanResult.ProjectPackage.Warnings.Any();
+        var hasPackageLevel =  output.ScanResult.ProjectPackage.Warnings.Count != 0;
         if (hasPackageLevel)
             return true;
         var hasDepLevel = false;
@@ -133,7 +133,7 @@ internal static class Program
 
             var outputFormatter = new OutputFormatJson(scanResult);
             outputFormatter.Write();
-            // scanResult.Options.OutputFilePath = $"/home/zdgecker/tmp/{Guid.NewGuid()}.json";
+            // scanResult.Options.OutputFilePath = $"/home/<username>/tmp/{Guid.NewGuid()}.json";
             // outputFormatter = new OutputFormatJson(scanResult);
             // outputFormatter.Write();
 
