@@ -158,7 +158,6 @@ namespace NugetInspector
     public class BasePackage : IEquatable<BasePackage>, IComparable<BasePackage>
     {
         public string Type { get; set; } = "nuget";
-        [JsonProperty("namespace")]
         public string Namespace { get; set; } = "";
         public string Name { get; set; } = "";
         public string? Version { get; set; } = "";

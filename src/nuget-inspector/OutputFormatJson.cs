@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace NugetInspector;
 
@@ -8,19 +9,20 @@ namespace NugetInspector;
 public class ScanHeader
 {
     #pragma warning disable IDE1006
+    
+    public string ProjectFramework { get; set; } = "";
+    public List<string> Errors { get; set; } = [];
+    public List<string> Warnings { get; set; } = [];
+    
     public string ToolName { get; set; } = "nuget-inspector";
     public string ToolHomepageurl { get; set; } = "https://github.com/nexB/nuget-inspector";
     public string ToolVersion { get; set; } = Config.NugetInspectorVersion;
     public List<string> Options { get; set; }
-
-    public string ProjectFramework { get; set; } = "";
-
+    
     public string Notice { get; set; } = "Dependency tree generated with nuget-inspector.\n" +
                                          "nuget-inspector is a free software tool from nexB Inc. and others.\n" +
                                          "Visit https://github.com/nexB/nuget-inspector/ for support and download.";
-
-    public List<string> Warnings { get; set; } = [];
-    public List<string> Errors { get; set; } = [];
+    
     #pragma warning restore IDE1006
     public ScanHeader(Options options)
     {
@@ -30,16 +32,9 @@ public class ScanHeader
 
 public class ScanOutput
 {
-    [JsonProperty("headers")]
     public List<ScanHeader> Headers { get; set; } = [];
-
-    [JsonProperty("files")]
     public List<ScannedFile> Files { get; set; } = [];
-
-    [JsonProperty("packages")]
     public List<BasePackage> Packages { get; set; } = [];
-
-    [JsonProperty("dependencies")]
     public List<BasePackage> Dependencies { get; set; } = [];
 }
 
@@ -73,7 +68,11 @@ internal class OutputFormatJson
         using var sw = new StreamWriter(fs);
         var serializer = new JsonSerializer
         {
-            Formatting = Formatting.Indented
+            Formatting = Formatting.Indented,
+            ContractResolver = new DefaultContractResolver
+            {
+                NamingStrategy = new SnakeCaseNamingStrategy()
+            }
         };
         var writer = new JsonTextWriter(sw);
         serializer.Serialize(writer, ScanOutput);
