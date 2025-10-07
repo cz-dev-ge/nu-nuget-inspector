@@ -15,7 +15,7 @@ public class LockFileHelper(LockFile lockfile)
     private static NuGetVersion? GetBestVersion(string name, VersionRange range, IList<LockFileTargetLibrary> libraries)
     {
         var versions = libraries
-            .Where(lib => lib.Name == name && lib.Version != null )
+            .Where(lib => string.Equals( lib.Name, name, StringComparison.InvariantCultureIgnoreCase ) && lib.Version != null )
             .Select(lib => lib.Version)
             .Cast<NuGetVersion>()
             .ToList();
