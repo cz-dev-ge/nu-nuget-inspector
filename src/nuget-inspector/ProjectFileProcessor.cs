@@ -1,4 +1,5 @@
 ﻿using Microsoft.Build.Evaluation;
+using NuGet.Build.Tasks;
 using NuGet.Common;
 using NuGet.Frameworks;
 using NuGet.LibraryModel;
@@ -137,7 +138,53 @@ internal class ProjectFileProcessor : IDependencyProcessor
             properties,
             null);
 
-        foreach (var reference in project.GetItems("PackageReference"))
+        var globalPackageReferences = new List<PackageReference>();
+        var centralPackageVersions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var manageCentrally = project.GetPropertyValue("ManagePackageVersionsCentrally");
+        if (string.Equals(manageCentrally, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (ProjectItem item in project.GetItems("GlobalPackageReference"))
+            {
+                var packageName = item.EvaluatedInclude;
+                var version = item.GetMetadataValue("Version");
+
+                if (!string.IsNullOrWhiteSpace(packageName) && !string.IsNullOrWhiteSpace(version))
+                {
+                    if (VersionRange.TryParse(version, out var versionRange))
+                    {
+                        var packageRef = new PackageReference(
+                            identity: new PackageIdentity(packageName, null),
+                            targetFramework: ProjectFramework,
+                            userInstalled: false,
+                            developmentDependency: false,
+                            requireReinstallation: false,
+                            allowedVersions: versionRange);
+
+                        globalPackageReferences.Add(packageRef);
+
+                        if (Config.TRACE)
+                            Console.WriteLine($"    Global package reference: {packageName} = {version}");
+                    }
+                }
+            }
+            references.AddRange(globalPackageReferences);
+
+            foreach (ProjectItem item in project.GetItems("PackageVersion"))
+            {
+                var packageName = item.EvaluatedInclude;
+                var version = item.GetMetadataValue("Version");
+
+                if (!string.IsNullOrWhiteSpace(packageName) && !string.IsNullOrWhiteSpace(version))
+                {
+                    centralPackageVersions[packageName] = version;
+
+                    if (Config.TRACE)
+                        Console.WriteLine($"    Central package version: {packageName} = {version}");
+                }
+            }
+        }
+
+        foreach (ProjectItem reference in project.GetItems(itemType: "PackageReference"))
         {
             var name = reference.EvaluatedInclude;
 
@@ -186,14 +233,37 @@ internal class ProjectFileProcessor : IDependencyProcessor
                 continue;
             }
 
-            var versionMetadata = reference.Metadata.FirstOrDefault(meta => meta.Name == "Version");
-            VersionRange? versionRange;
-            if (versionMetadata is not null)
+            ProjectMetadata? version_metadata = reference.Metadata.FirstOrDefault(predicate: meta => meta.Name == "Version");
+            ProjectMetadata? versionOverride_metadata = reference.Metadata.FirstOrDefault(predicate: meta => meta.Name == "VersionOverride");
+            VersionRange? version_range;
+            if (versionOverride_metadata is not null)
+            {
+                // VersionOverride takes precedence
+                VersionRange.TryParse(
+                    versionOverride_metadata.EvaluatedValue, 
+                    allowFloating: true, 
+                    out version_range);
+                if (Config.TRACE)
+                    Console.WriteLine($"    Applied VersionOverride for {name}: {versionOverride_metadata.EvaluatedValue}");
+            }
+            else if (version_metadata is not null)
             {
                 _ = VersionRange.TryParse(
                     versionMetadata.EvaluatedValue,
                     true,
                     out versionRange);
+            }
+            else if (centralPackageVersions.TryGetValue(name, out var centralVersionString))
+            {
+                VersionRange.TryParse(centralVersionString, out version_range);
+                if (Config.TRACE)
+                    Console.WriteLine($"    Applied central version for {name}: {centralVersionString}");
+            }
+            else if (centralPackageVersions.TryGetValue(name, out var centralVersionString))
+            {
+                VersionRange.TryParse(centralVersionString, out version_range);
+                if (Config.TRACE)
+                    Console.WriteLine($"    Applied central version for {name}: {centralVersionString}");
             }
             else
             {
@@ -212,32 +282,14 @@ internal class ProjectFileProcessor : IDependencyProcessor
                 // }
             }
 
-            PackageReference packref;
-
-            if (versionRange == null)
-            {
-                if (Config.TRACE)
-                    Console.WriteLine($"    Project reference without version range: {name}");
-
-                packref = new PackageReference(
-                    new PackageIdentity(name, null),
-                    ProjectFramework,
-                    false,
-                    false,
-                    false,
-                    VersionRange.All);
-            }
-            else
-            {
-                packref = new PackageReference(
-                    new PackageIdentity(name, null),//(NuGetVersion?)version_range.MinVersion),
-                    ProjectFramework,
-                    false,
-                    false,
-                    false,
-                    versionRange);
-            }
-            references.Add(packref);
+            var packref = new PackageReference(
+                identity: new PackageIdentity(name, null),
+                targetFramework: ProjectFramework,
+                userInstalled: false,
+                developmentDependency: false,
+                requireReinstallation: false,
+                allowedVersions: version_range ?? VersionRange.All);
+            references.Add(item: packref);
 
             if (Config.TRACE)
             {
