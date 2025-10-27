@@ -137,7 +137,7 @@ public class LockFileHelper(LockFile lockfile)
         {
             Log.Trace($"LockFile.PackageSpec: {lockfile?.PackageSpec}");
             Log.Trace($"LockFile.PackageSpec.TargetFrameworks: {lockfile?.PackageSpec?.TargetFrameworks}");
-
+            
             var targetFrameworks = lockfile
                 ?.PackageSpec
                 ?.TargetFrameworks 
@@ -155,6 +155,16 @@ public class LockFileHelper(LockFile lockfile)
 
                     var version = treeBuilder.GetResolvedVersion(dep.Name, dep.LibraryRange.VersionRange);
                     resolution.Dependencies.Add(item: new BasePackage(name: dep.Name, dependencyType, version: version));
+                }
+
+                foreach (var downloadDependency in framework.DownloadDependencies)
+                {
+                    if( downloadDependency.VersionRange?.MinVersion is not {} version )
+                        throw new ArgumentException("Version range cannot be null");
+
+                    Console.WriteLine($"ProjectLockFile > PackageSpec > TargetFramework > Dependencies | Adding dependency {ComponentType.Framework}  {downloadDependency.Name} to dependencies");
+                    
+                    resolution.Dependencies.Add(item: new BasePackage(downloadDependency.Name, ComponentType.Framework, version.ToString()));
                 }
             }
         }

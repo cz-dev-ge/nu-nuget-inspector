@@ -147,6 +147,7 @@ namespace NugetInspector
     {
         public const string NuGet = "nuget";
         public const string Project = "project";
+        public const string Framework = "nuget";
     }
 
     /// <summary>
