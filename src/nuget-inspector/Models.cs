@@ -118,12 +118,12 @@ namespace NugetInspector
 
         public string? GetResolvedVersion(string name, VersionRange range)
         {
-            var allVersions = _VersionsPairByBasePackage.Keys.Where(key => key.Name == name)
+            var allVersions = _VersionsPairByBasePackage.Keys.Where(key => key.Name.Equals( name, StringComparison.InvariantCultureIgnoreCase ) )
                 .Select(key => _VersionsPairByBasePackage[key]);
             var best = range.FindBestMatch(allVersions.Select(ver => ver.Version));
             foreach (var pair in _VersionsPairByBasePackage)
             {
-                if (pair.Key.Name == name && pair.Value.Version == best)
+                if (pair.Key.Name.Equals( name, StringComparison.InvariantCultureIgnoreCase ) && pair.Value.Version == best)
                     return pair.Key.Version;
             }
 
