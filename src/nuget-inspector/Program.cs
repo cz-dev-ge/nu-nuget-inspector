@@ -109,10 +109,6 @@ internal static class Program
             var depsTimer = Stopwatch.StartNew();
             var scanResult = scanner.RunScan();
             
-            Log.Info("## DEPENDENCIES ##");
-            foreach( var dep in scanResult.ProjectPackage.Dependencies )
-                Log.Info($"{dep.Name} {dep.Type} ");
-            
             depsTimer.Stop();
 
             var metaTimer = Stopwatch.StartNew();
@@ -120,6 +116,10 @@ internal static class Program
                 scanResult,
                 options.WithDetails);
             metaTimer.Stop();
+            
+            Log.Info("## DEPENDENCIES ##");
+            foreach( var dep in scanResult.ProjectPackage.Dependencies )
+                Log.Info($"{dep.Name} {dep.Version} {dep.Type} ");
 
             scanTimer.Stop();
 
@@ -137,12 +137,12 @@ internal static class Program
             // outputFormatter = new OutputFormatJson(scanResult);
             // outputFormatter.Write();
 
-            Log.Trace("\n=============JSON OUTPUT================");
-            var output = JsonConvert.SerializeObject(
-                outputFormatter.ScanOutput,
-                Formatting.Indented);
-            Log.Trace(output);
-            Log.Trace("=======================================\n");
+            // Log.Trace("\n=============JSON OUTPUT================");
+            // var output = JsonConvert.SerializeObject(
+            //     outputFormatter.ScanOutput,
+            //     Formatting.Indented);
+            // Log.Trace(output);
+            // Log.Trace("=======================================\n");
             
             var projectPackage = scanResult.ProjectPackage;
 

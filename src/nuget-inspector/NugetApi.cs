@@ -551,13 +551,12 @@ public class NugetApi
             // note: this is caching across runs 
             try
             {
-                RequestCachePolicy policy = new(RequestCacheLevel.Default);
-                var request = WebRequest.Create(packageCatalogUrl);
-                request.CachePolicy = policy;
-                var response = (HttpWebResponse)request.GetResponse();
-                var catalog = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                using var httpClient = new HttpClient();
+                var response = httpClient.GetAsync(packageCatalogUrl).Result;
+                response.EnsureSuccessStatusCode();
+                var catalog = response.Content.ReadAsStringAsync().Result;
                 catalogEntry = JObject.Parse(catalog);
-                // note: this is caching accross calls in a run 
+                // note: this is caching across calls in a run 
                 _CatalogEntryByCatalogUrl[packageCatalogUrl] = catalogEntry;
             }
             catch (Exception ex)
