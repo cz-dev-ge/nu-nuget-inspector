@@ -658,10 +658,10 @@ public class NugetApi
     /// effective minimal set of dependencies
     /// </summary>
     public HashSet<SourcePackageDependencyInfo> ResolveDependenciesForPackageConfig(
-        IEnumerable<PackageReference> targetReferences,
-        IEnumerable<SourcePackageDependencyInfo> availableDependencies)
+        IReadOnlyList<PackageReference> targetReferences,
+        IReadOnlyList<SourcePackageDependencyInfo> availableDependencies)
     {
-        var directDeps = targetReferences.Select(p => p.PackageIdentity);
+        var directDeps = targetReferences.Select(p => p.PackageIdentity).ToList();
         IEnumerable<string> targetNames = new HashSet<string>(directDeps.Select(p => p.Id));
 
         PackageResolverContext context = new (

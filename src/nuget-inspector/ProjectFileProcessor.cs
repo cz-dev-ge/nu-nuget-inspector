@@ -355,14 +355,15 @@ internal class ProjectFileProcessor : IDependencyProcessor
                 Console.WriteLine($"    available_dependencies: {spdi.Id}@{spdi.Version} prerel:{spdi.Version.IsPrerelease}");
         }
 
-        IEnumerable<SourcePackageDependencyInfo> prunedDependencies = availableDependencies.ToList();
+        var prunedDependencies = availableDependencies.ToList();
 
         // Prune the potential dependencies from prereleases
         prunedDependencies = PrunePackageTree.PrunePreleaseForStableTargets(
             prunedDependencies,
             directDependencyPids,
             directDependencyPids
-        );
+        ).ToList();
+        
         if (Config.TRACE_DEEP)
         {
             foreach (var spdi in prunedDependencies)
@@ -380,7 +381,8 @@ internal class ProjectFileProcessor : IDependencyProcessor
         // prune versions that do not match version range constraints
         prunedDependencies = PrunePackageTree.PruneDisallowedVersions(
             prunedDependencies,
-            references);
+            references).ToList();
+        
         if (Config.TRACE_DEEP)
             foreach (var spdi in prunedDependencies) Console.WriteLine($"    After PruneDisallowedVersions: {spdi.Id}@{spdi.Version}");
 
