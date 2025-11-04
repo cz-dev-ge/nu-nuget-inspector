@@ -129,6 +129,8 @@ public class LockFileHelper(LockFile lockfile)
                 
                 var version = treeBuilder.GetResolvedVersion(dep.Name, dep.LibraryRange.VersionRange);
                 var dependencyType = GetComponentType( projectReferences, dep.Name );
+                if (dependencyType == ComponentType.Project)
+                    continue;
                 Log.Info($"ProjectLockFile > PackageSpec > Dependencies | Adding dependency {dependencyType}  {dep.Name} to dependencies");
                 resolution.Dependencies.Add(item: new BasePackage(name: dep.Name, dependencyType, version: version));
             }
@@ -151,6 +153,8 @@ public class LockFileHelper(LockFile lockfile)
                         throw new ArgumentException("Version range cannot be null");
                     
                     var dependencyType = GetComponentType( projectReferences, dep.Name );
+                    if (dependencyType == ComponentType.Project)
+                        continue;
                     Console.WriteLine($"ProjectLockFile > PackageSpec > TargetFramework > Dependencies | Adding dependency {dependencyType}  {dep.Name} to dependencies");
 
                     var version = treeBuilder.GetResolvedVersion(dep.Name, dep.LibraryRange.VersionRange);
@@ -177,6 +181,8 @@ public class LockFileHelper(LockFile lockfile)
             foreach (var dependency in dependencyGroup.Dependencies)
             {
                 var component = DetectDependency(dependencyGroup, dependency, projectReferences);
+                if (component.Type == ComponentType.Project)
+                    continue;
                 
                 Console.WriteLine($"ProjectLockFile > ProjectFileDependencyGroups > Dependencies | Adding dependency {component.Type}  {component.Name} to dependencies");
                 resolution.Dependencies.Add(component);
