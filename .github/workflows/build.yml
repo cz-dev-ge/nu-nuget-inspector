@@ -1,0 +1,33 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version string to pass to build.sh"
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Build binary
+        run: |
+          chmod +x ./build.sh
+          ./build.sh "${{ inputs.version }}"
+
+      - name: Pack binary
+        run: |
+          mkdir -p build
+          zip -j "build/nuget-inspector.zip" "build/nuget-inspector"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nuget-inspector
+          path: build/nuget-inspector.zip
