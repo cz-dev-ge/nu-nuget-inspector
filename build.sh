@@ -11,12 +11,32 @@
 # TODO: add --version-suffix based on git
 # TODO: add --arch
 # TODO: add --os
-#  -p:PublishSingleFile=true \
+#!/usr/bin/env bash
+set -euo pipefail
 
-dotnet publish \
-  --runtime linux-x64 \
-  --self-contained true \
-  --configuration Release \
-  -p:Version=0.9.12 \
-  --output build \
+VERSION="${1:+${1#v}}"
+
+mkdir -p build
+
+PUBLISH_ARGS=(
+  --runtime linux-x64
+  --self-contained true
+  --configuration Release
+  -p:PublishSingleFile=true
+  --output build
   src/nuget-inspector/nuget-inspector.csproj
+)
+
+if [[ -n "$VERSION" ]]; then
+  echo "Version: $VERSION"
+  PUBLISH_ARGS=(
+    -p:IncludeSourceRevisionInInformationalVersion=false
+    -p:Version="$VERSION"
+    "${PUBLISH_ARGS[@]}"
+  )
+else
+  echo "No version supplied, using project default version"
+fi
+
+dotnet publish "${PUBLISH_ARGS[@]}"
+
