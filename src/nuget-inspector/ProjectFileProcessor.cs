@@ -233,53 +233,31 @@ internal class ProjectFileProcessor : IDependencyProcessor
                 continue;
             }
 
-            ProjectMetadata? version_metadata = reference.Metadata.FirstOrDefault(predicate: meta => meta.Name == "Version");
-            ProjectMetadata? versionOverride_metadata = reference.Metadata.FirstOrDefault(predicate: meta => meta.Name == "VersionOverride");
-            VersionRange? version_range;
-            if (versionOverride_metadata is not null)
+            ProjectMetadata? effectiveMetadata = 
+                reference.Metadata.FirstOrDefault(predicate: meta => meta.Name == "VersionOverride") ??
+                reference.Metadata.FirstOrDefault(predicate: meta => meta.Name == "Version");
+            VersionRange? versionRange = null;
+            
+            if (effectiveMetadata is not null)
             {
                 // VersionOverride takes precedence
                 VersionRange.TryParse(
-                    versionOverride_metadata.EvaluatedValue, 
+                    effectiveMetadata.EvaluatedValue, 
                     allowFloating: true, 
-                    out version_range);
-                if (Config.TRACE)
-                    Console.WriteLine($"    Applied VersionOverride for {name}: {versionOverride_metadata.EvaluatedValue}");
-            }
-            else if (version_metadata is not null)
-            {
-                _ = VersionRange.TryParse(
-                    versionMetadata.EvaluatedValue,
-                    true,
-                    out versionRange);
+                    versionRange: out versionRange);
+                if (Config.TRACE && effectiveMetadata.Name == "VersionOverride")
+                    Console.WriteLine($"    Applied VersionOverride for {name}: {effectiveMetadata.EvaluatedValue}");
             }
             else if (centralPackageVersions.TryGetValue(name, out var centralVersionString))
             {
-                VersionRange.TryParse(centralVersionString, out version_range);
+                VersionRange.TryParse(centralVersionString, out versionRange);
                 if (Config.TRACE)
                     Console.WriteLine($"    Applied central version for {name}: {centralVersionString}");
             }
-            else if (centralPackageVersions.TryGetValue(name, out var centralVersionString))
-            {
-                VersionRange.TryParse(centralVersionString, out version_range);
-                if (Config.TRACE)
-                    Console.WriteLine($"    Applied central version for {name}: {centralVersionString}");
-            }
-            else
+            else 
             {
                 if (Config.TRACE)
                     Console.WriteLine($"    Project reference without version: {name}");
-                versionRange = VersionRange.All;
-                // // find the minimum version in the range
-                // var psmr = nugetApi.FindPackageVersion(name: name, version_range: version_range);
-                // if (psmr != null)
-                // {
-                //     version_range = new VersionRange(new NuGetVersion(psmr.Version));
-                // }
-                // else
-                // {
-                //     continue;
-                // }
             }
 
             var packref = new PackageReference(
@@ -288,14 +266,14 @@ internal class ProjectFileProcessor : IDependencyProcessor
                 userInstalled: false,
                 developmentDependency: false,
                 requireReinstallation: false,
-                allowedVersions: version_range ?? VersionRange.All);
+                allowedVersions: versionRange ?? VersionRange.All);
             references.Add(item: packref);
 
             if (Config.TRACE)
             {
                 Console.WriteLine(
                     $"    Add Direct dependency from PackageReference: id: {packref.PackageIdentity} "
-                    + $"version_range: {packref.AllowedVersions}");
+                    + $"versionRange: {packref.AllowedVersions}");
             }
         }
 
@@ -355,7 +333,7 @@ internal class ProjectFileProcessor : IDependencyProcessor
             {
                 Console.WriteLine(
                     $"    Add Direct dependency from plain Reference: id: {plainref.PackageIdentity} "
-                    + $"version_range: {plainref.AllowedVersions}");
+                    + $"versionRange: {plainref.AllowedVersions}");
             }
         }
         ProjectCollection.GlobalProjectCollection.UnloadProject(project);
