@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace NugetInspector;
 
 public static class Config
@@ -9,7 +11,12 @@ public static class Config
     public static bool TRACE_DEEP = false;
     public static bool TRACE_META = false;
     public static bool TRACE_OUTPUT = false;
-    public const string NugetInspectorVersion = "0.9.12";
+    public static readonly string NugetInspectorVersion =
+        typeof(Program).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion
+        ?? typeof(Program).Assembly.GetName().Version?.ToString()
+        ?? "unknown";
     #pragma warning restore CA2211
 }
 

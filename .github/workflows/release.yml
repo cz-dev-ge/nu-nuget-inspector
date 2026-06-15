@@ -1,0 +1,40 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'          # triggers on tags like v1.0.0, v2.3.4, etc.
+
+permissions:
+  contents: write        # needed so GITHUB_TOKEN can create releases
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      # On tag push, github.ref_name is the tag name (e.g. v1.2.3)
+      version: ${{ github.ref_name }}
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Download built artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: nuget-inspector
+          path: build
+
+      - name: Create GitHub Release with auto-generated notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --title "Release ${{ github.ref_name }}" \
+            --generate-notes \
+            build/nuget-inspector.zip
