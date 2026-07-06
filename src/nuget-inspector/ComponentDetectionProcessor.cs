@@ -5,6 +5,8 @@ using Microsoft.ComponentDetection.Orchestrator.Commands;
 using Microsoft.ComponentDetection.Orchestrator.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+// Alias to disambiguate from NugetInspector's own ScanResult (see ProjectScanner.cs).
+using CdScanResult = Microsoft.ComponentDetection.Contracts.BcdeModels.ScanResult;
 
 namespace NugetInspector;
 
@@ -34,8 +36,23 @@ internal class ComponentDetectionProcessor(string projectDirectory) : IDependenc
 
     private async Task<DependencyResolution> ResolveAsync()
     {
-        var resolution = new DependencyResolution(success: false);
+        var scanResult = await RunComponentDetectionScanAsync();
+        if (scanResult == null)
+            return new DependencyResolution(success: false);
 
+        var packagesById = BuildPackagesById(scanResult);
+        var topLevelIds = LinkDependencyGraphs(scanResult, packagesById);
+
+        return BuildResolution(packagesById, topLevelIds);
+    }
+
+    /// <summary>
+    /// Runs the Microsoft.ComponentDetection scan (scoped to the "NuGet" detector category)
+    /// against <see cref="projectDirectory"/>. Returns null if the scan did not complete
+    /// successfully.
+    /// </summary>
+    private async Task<CdScanResult?> RunComponentDetectionScanAsync()
+    {
         var services = new ServiceCollection()
             .AddComponentDetection()
             .AddLogging(builder => builder.SetMinimumLevel(LogLevel.Warning));
@@ -54,18 +71,24 @@ internal class ComponentDetectionProcessor(string projectDirectory) : IDependenc
         var scanCommand = ActivatorUtilities.CreateInstance<ScanCommand>(serviceProvider);
         var scanResult = await scanCommand.ExecuteScanCommandAsync(settings);
 
-        if (scanResult.ResultCode != ProcessingResultCode.Success)
-        {
-            Log.Trace($"ComponentDetectionProcessor: scan did not complete successfully: {scanResult.ResultCode}");
-            return resolution;
-        }
+        if (scanResult.ResultCode == ProcessingResultCode.Success)
+            return scanResult;
 
-        // Build a lookup of component id -> BasePackage for every NuGet component found
-        // that actually belongs to this project's own manifest(s), not to some other
-        // project nested elsewhere under the scanned source directory. Microsoft.ComponentDetection's
-        // detectors scan the whole SourceDirectory tree recursively, so a monorepo-style layout
-        // with nested sub-projects would otherwise leak sibling projects' packages into this result.
+        Log.Trace($"ComponentDetectionProcessor: scan did not complete successfully: {scanResult.ResultCode}");
+        return null;
+    }
+
+    /// <summary>
+    /// Builds a lookup of component id -> BasePackage for every NuGet component found
+    /// that actually belongs to this project's own manifest(s), not to some other
+    /// project nested elsewhere under the scanned source directory. Microsoft.ComponentDetection's
+    /// detectors scan the whole SourceDirectory tree recursively, so a monorepo-style layout
+    /// with nested sub-projects would otherwise leak sibling projects' packages into this result.
+    /// </summary>
+    private Dictionary<string, BasePackage> BuildPackagesById(CdScanResult scanResult)
+    {
         var packagesById = new Dictionary<string, BasePackage>();
+
         foreach (var scanned in scanResult.ComponentsFound)
         {
             if (scanned.Component is not NuGetComponent nuget)
@@ -87,34 +110,56 @@ internal class ComponentDetectionProcessor(string projectDirectory) : IDependenc
             };
         }
 
-        // Wire up parent/child relationships and top-level (explicitly referenced)
-        // packages using the per-manifest dependency graphs, when available (this is
-        // the case for project.assets.json-based detection). Only consider graphs whose
-        // manifest belongs to this project directory, for the same reason as above.
+        return packagesById;
+    }
+
+    /// <summary>
+    /// Wires up parent/child relationships between the given packages using the per-manifest
+    /// dependency graphs, when available (this is the case for project.assets.json-based
+    /// detection). Only graphs whose manifest belongs to this project directory are
+    /// considered, for the same reason as in <see cref="BuildPackagesById"/>. Returns the
+    /// set of explicitly referenced (top-level) component ids across those graphs.
+    /// </summary>
+    private HashSet<string> LinkDependencyGraphs(CdScanResult scanResult, Dictionary<string, BasePackage> packagesById)
+    {
         var topLevelIds = new HashSet<string>();
-        if (scanResult is DefaultGraphScanResult { DependencyGraphs: not null } graphResult)
+
+        if (scanResult is not DefaultGraphScanResult { DependencyGraphs: not null } graphResult)
+            return topLevelIds;
+
+        foreach (var (manifestPath, graphWithMetadata) in graphResult.DependencyGraphs)
         {
-            foreach (var (manifestPath, graphWithMetadata) in graphResult.DependencyGraphs)
+            if (!string.Equals(GetOwningDirectory(manifestPath), _NormalizedProjectDirectory, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            foreach (var (componentId, children) in graphWithMetadata.Graph)
             {
-                if (!string.Equals(GetOwningDirectory(manifestPath), _NormalizedProjectDirectory, StringComparison.OrdinalIgnoreCase))
+                if (children == null || !packagesById.TryGetValue(componentId, out var parent))
                     continue;
 
-                foreach (var (componentId, children) in graphWithMetadata.Graph)
+                foreach (var childId in children)
                 {
-                    if (children == null || !packagesById.TryGetValue(componentId, out var parent))
-                        continue;
-
-                    foreach (var childId in children)
-                    {
-                        if (packagesById.TryGetValue(childId, out var child) && !parent.Dependencies.Contains(child))
-                            parent.Dependencies.Add(child);
-                    }
+                    if (packagesById.TryGetValue(childId, out var child) && !parent.Dependencies.Contains(child))
+                        parent.Dependencies.Add(child);
                 }
-
-                foreach (var topLevelId in graphWithMetadata.ExplicitlyReferencedComponentIds ?? [])
-                    topLevelIds.Add(topLevelId);
             }
+
+            foreach (var topLevelId in graphWithMetadata.ExplicitlyReferencedComponentIds ?? [])
+                topLevelIds.Add(topLevelId);
         }
+
+        return topLevelIds;
+    }
+
+    /// <summary>
+    /// Assembles the final DependencyResolution from the resolved packages and top-level ids.
+    /// Detectors without graph data (e.g. packages.config, bare nuspec/nupkg scans) mark every
+    /// found component as explicitly referenced; fall back to treating every found package as
+    /// top-level when no graph-derived top-level set exists.
+    /// </summary>
+    private static DependencyResolution BuildResolution(Dictionary<string, BasePackage> packagesById, HashSet<string> topLevelIds)
+    {
+        var resolution = new DependencyResolution(success: true);
 
         foreach (var topLevelId in topLevelIds)
         {
@@ -122,13 +167,9 @@ internal class ComponentDetectionProcessor(string projectDirectory) : IDependenc
                 resolution.Dependencies.Add(topLevel);
         }
 
-        // Detectors without graph data (e.g. packages.config, bare nuspec/nupkg scans)
-        // mark every found component as explicitly referenced; fall back to treating
-        // every found package as top-level when no graph-derived top-level set exists.
         if (resolution.Dependencies.Count == 0)
             resolution.Dependencies.AddRange(packagesById.Values);
 
-        resolution.Success = true;
         return resolution;
     }
 

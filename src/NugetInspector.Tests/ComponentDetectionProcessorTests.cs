@@ -5,27 +5,27 @@ namespace NugetInspector.Tests;
 [TestFixture]
 public class ComponentDetectionProcessorTests
 {
-    private string _tempRoot = "";
+    private string _TempRoot = "";
 
     [SetUp]
     public void SetUp()
     {
-        _tempRoot = Path.Combine(Path.GetTempPath(), "nuget-inspector-tests-" + Guid.NewGuid());
-        Directory.CreateDirectory(_tempRoot);
+        _TempRoot = Path.Combine(Path.GetTempPath(), "nuget-inspector-tests-" + Guid.NewGuid());
+        Directory.CreateDirectory(_TempRoot);
     }
 
     [TearDown]
     public void TearDown()
     {
-        if (Directory.Exists(_tempRoot))
-            Directory.Delete(_tempRoot, recursive: true);
+        if (Directory.Exists(_TempRoot))
+            Directory.Delete(_TempRoot, recursive: true);
     }
 
     [Test]
     public void Resolve_FindsTopLevelPackage_FromProjectAssetsJson()
     {
         var projectDir = ProjectAssetsFixture.CreateProjectWithSinglePackage(
-            _tempRoot,
+            _TempRoot,
             projectName: "ProjectA",
             topLevelPackageId: "Newtonsoft.Json",
             topLevelPackageVersion: "13.0.3");
@@ -34,14 +34,14 @@ public class ComponentDetectionProcessorTests
 
         Assert.That(resolution.Success, Is.True);
         Assert.That(resolution.Dependencies, Has.Exactly(1).Matches<BasePackage>(
-            p => p.Name == "Newtonsoft.Json" && p.Version == "13.0.3"));
+            p => p is { Name: "Newtonsoft.Json", Version: "13.0.3" }));
     }
 
     [Test]
     public void Resolve_BuildsNestedDependencyTree_FromProjectAssetsJson()
     {
         var projectDir = ProjectAssetsFixture.CreateProjectWithSinglePackage(
-            _tempRoot,
+            _TempRoot,
             projectName: "ProjectWithTransitive",
             topLevelPackageId: "Top.Package",
             topLevelPackageVersion: "1.0.0",
@@ -52,7 +52,7 @@ public class ComponentDetectionProcessorTests
         Assert.That(resolution.Success, Is.True);
         var topLevel = resolution.Dependencies.Single(p => p.Name == "Top.Package");
         Assert.That(topLevel.Dependencies, Has.Exactly(1).Matches<BasePackage>(
-            p => p.Name == "Transitive.Package" && p.Version == "2.0.0"));
+            p => p is { Name: "Transitive.Package", Version: "2.0.0" }));
 
         // The transitive package should not itself be listed as top-level.
         Assert.That(resolution.Dependencies.Any(p => p.Name == "Transitive.Package"), Is.False);
@@ -62,7 +62,7 @@ public class ComponentDetectionProcessorTests
     public void Resolve_SetsPurlAndDatasourceId()
     {
         var projectDir = ProjectAssetsFixture.CreateProjectWithSinglePackage(
-            _tempRoot,
+            _TempRoot,
             projectName: "ProjectB",
             topLevelPackageId: "Some.Package",
             topLevelPackageVersion: "9.9.9");
@@ -84,7 +84,7 @@ public class ComponentDetectionProcessorTests
         // ComponentDetectionProcessor filters components/graphs down to those owned by
         // the target project's own directory to prevent this.
         var parentDir = ProjectAssetsFixture.CreateProjectWithSinglePackage(
-            _tempRoot,
+            _TempRoot,
             projectName: "ParentProject",
             topLevelPackageId: "Parent.Package",
             topLevelPackageVersion: "1.0.0");
