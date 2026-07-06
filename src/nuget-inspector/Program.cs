@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using Microsoft.Build.Locator;
-using Newtonsoft.Json;
 
 namespace NugetInspector;
 
@@ -133,17 +132,7 @@ internal static class Program
 
             var outputFormatter = new OutputFormatJson(scanResult);
             outputFormatter.Write();
-            // scanResult.Options.OutputFilePath = $"/home/<username>/tmp/{Guid.NewGuid()}.json";
-            // outputFormatter = new OutputFormatJson(scanResult);
-            // outputFormatter.Write();
 
-            // Log.Trace("\n=============JSON OUTPUT================");
-            // var output = JsonConvert.SerializeObject(
-            //     outputFormatter.ScanOutput,
-            //     Formatting.Indented);
-            // Log.Trace(output);
-            // Log.Trace("=======================================\n");
-            
             var projectPackage = scanResult.ProjectPackage;
 
             var success = scanResult.Status == ScanResult.ResultStatus.Success;

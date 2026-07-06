@@ -1,6 +1,19 @@
 Changelog
 =========
 
+v0.9.13
+--------
+
+This is a major internal change release:
+
+* Replace the built-in project.assets.json, packages.config, project.json,
+  project.json.lock and *proj/bare-XML dependency resolvers with
+  Microsoft.ComponentDetection (https://github.com/microsoft/component-detection)
+  for detecting the NuGet dependency graph. Package metadata enrichment (via the
+  NuGet API) is unchanged.
+* Remove the now unused "--with-fallback" command line option.
+
+
 v0.9.12
 --------
 

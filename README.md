@@ -4,6 +4,10 @@ Fork of aboutcode-org's nuget-inspector.
 
 Fixes some issues of the original one as my PRs where not merged but we need them.
 
+## AI Contributions
+
+Parts of the code have been co-programmed with so-called generative AI.
+
 
 # Original README (but converted from RST to MD)
 
@@ -61,6 +65,8 @@ Note that the output data structure is evolving and not final.
 
 
 ### License
+
+Copyright (c) 2026 Carl Zeiss AG and others.
 
 Copyright (c) nexB Inc. and others.
 

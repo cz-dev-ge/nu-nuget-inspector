@@ -28,7 +28,6 @@ public class Options
 
     // If True, return extra metadata details when available such as SHA512
     public bool WithDetails;
-    public bool WithFallback;
     public bool WithNuGetOrg;
     public bool ShowHelp;
     public bool Verbose;
@@ -72,9 +71,6 @@ public class Options
         if (WithDetails)
             options.Add("--with-details");
 
-        if (WithFallback)
-            options.Add("--with-fallback");
-
         if (WithNuGetOrg)
             options.Add("--with-nuget-org");
 
@@ -100,9 +96,6 @@ public class Options
         }
 
         commandOptions.Add("with-details", "Optionally include package metadata details (such as checksum and size) when available.",
-            value => options.WithDetails = value != null);
-
-        commandOptions.Add("with-fallback", "Optionally use a plain XML project file parser as fallback from failures.",
             value => options.WithDetails = value != null);
 
         commandOptions.Add("with-nuget-org", "Optionally use the official, public nuget.org API as a fallback in addition to nuget.config-configured API sources.",
