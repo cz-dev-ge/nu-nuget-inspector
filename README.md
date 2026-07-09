@@ -8,6 +8,49 @@ Fixes some issues of the original one as my PRs where not merged but we need the
 
 Parts of the code have been co-programmed with so-called generative AI.
 
+## Cross-platform support
+
+nu-nuget-inspector is a cross-platform tool that runs on Linux and Windows.
+
+### Cross-platform known-issues
+
+Projects that have been built using Windows cannot be scanned under Linux and vice versa.
+This is a limitation due to windows and linux style paths in the scanned project.assets.json
+files. When using ORT, run the Analyzer step which uses nu-nuget-inspector on the same
+platform as the project was built on.
+
+## NuGet feed authentication
+
+`nuget-inspector` uses `nuget.config` to discover package sources, the same as
+the `dotnet`/`nuget` CLIs. If a private feed requires credentials, you don't
+need to hardcode them in a checked-in `nuget.config`: NuGet.Client natively
+expands `%ENV_VAR%` placeholders found in the `packageSourceCredentials`
+section against environment variables at runtime. This works out of the box
+on Linux, Windows and macOS, and lets different feeds use different
+credentials, e.g.:
+
+```xml
+<configuration>
+  <packageSources>
+    <add key="FeedA" value="https://feedA.example.com/nuget/v3/index.json" />
+    <add key="FeedB" value="https://feedB.example.com/nuget/v3/index.json" />
+  </packageSources>
+  <packageSourceCredentials>
+    <FeedA>
+      <add key="Username" value="%FEEDA_USER%" />
+      <add key="ClearTextPassword" value="%FEEDA_PASS%" />
+    </FeedA>
+    <FeedB>
+      <add key="Username" value="%FEEDB_USER%" />
+      <add key="ClearTextPassword" value="%FEEDB_PASS%" />
+    </FeedB>
+  </packageSourceCredentials>
+</configuration>
+```
+
+Set `FEEDA_USER`/`FEEDA_PASS` and `FEEDB_USER`/`FEEDB_PASS` in the environment
+(e.g. as CI secrets) and each feed will be authenticated independently.
+
 
 # Original README (but converted from RST to MD)
 

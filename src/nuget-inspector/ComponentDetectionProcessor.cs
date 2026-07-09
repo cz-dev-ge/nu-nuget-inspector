@@ -62,7 +62,7 @@ internal class ComponentDetectionProcessor(string projectDirectory) : IDependenc
         var settings = new ScanSettings
         {
             SourceDirectory = new DirectoryInfo(projectDirectory),
-            DetectorCategories = ["NuGet"],
+            DetectorCategories = ["NuGet", "NuGetProjectCentric"],
             Output = Path.GetTempPath(),
         };
 
@@ -179,14 +179,28 @@ internal class ComponentDetectionProcessor(string projectDirectory) : IDependenc
     /// with no reported locations is kept, to avoid dropping valid results from detectors
     /// that don't populate location info.
     /// </summary>
+    /// <remarks>This is not working for projects built under Windows and scanned under Linux.</remarks>
     private bool BelongsToScannedProject(IEnumerable<string>? locationsFoundAt)
     {
         var locations = locationsFoundAt?.ToList() ?? [];
         if (locations.Count == 0)
             return true;
 
-        return locations.Any(location =>
-            string.Equals(GetOwningDirectory(location), _NormalizedProjectDirectory, StringComparison.OrdinalIgnoreCase));
+        return locations.Any(location => IsSameDirectory(location, _NormalizedProjectDirectory));
+    }
+
+    private bool IsSameDirectory(string directory1, string directory2)
+    {
+        var dir1 = GetOwningDirectory(directory1);
+
+        dir1 = Environment.OSVersion.Platform != PlatformID.Unix
+            ? dir1
+            : dir1.Split(['\\','/'], StringSplitOptions.RemoveEmptyEntries).Last();
+        var dir2 = Environment.OSVersion.Platform != PlatformID.Unix
+            ? directory2
+            : directory2.Split(['\\','/'], StringSplitOptions.RemoveEmptyEntries).Last();
+
+        return string.Equals(dir1, dir2, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

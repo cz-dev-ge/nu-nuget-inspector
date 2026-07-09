@@ -12,6 +12,14 @@ This is a major internal change release:
   for detecting the NuGet dependency graph. Package metadata enrichment (via the
   NuGet API) is unchanged.
 * Remove the now unused "--with-fallback" command line option.
+* Document that per-feed NuGet credentials can be supplied via environment
+  variables using nuget.config's native ``%ENV_VAR%`` placeholder support in
+  the ``packageSourceCredentials`` section (no code change needed; this is a
+  built-in NuGet.Client feature). See README for an example.
+* Fix a bug where a single unreachable or unauthorized NuGet source (e.g. a
+  private feed with missing/invalid credentials) would abort the entire scan,
+  even though other sources (such as the public nuget.org) could still resolve
+  packages fine. Such sources are now skipped with a warning instead.
 
 
 v0.9.12

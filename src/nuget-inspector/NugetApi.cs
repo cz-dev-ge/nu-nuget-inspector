@@ -211,11 +211,19 @@ public class NugetApi
             AddSourceRepo(sourceRepository);
             seen.Add(sourceUrl);
         }
+
+        if (_SourceRepositories.Count == 0 && seen.Count > 0)
+            Console.Error.WriteLine(
+                "WARNING: None of the configured NuGet sources could be reached. " +
+                "Package metadata and dependency resolution will likely be incomplete.");
     }
 
     /// <summary>
     /// Add package_source (e.g., a NuGet repo API URL, aka. PackageSource) to the list of known NuGet APIs.
     /// Also keep track of SourceRepository in source_repositories.
+    /// A source that cannot be reached or fails to authenticate (e.g. an unauthorized private
+    /// feed, or a network error) is skipped with a warning rather than aborting the whole scan:
+    /// other sources (such as the public nuget.org) may still resolve packages just fine.
     /// </summary>
     /// <param name="sourceRepo">package_source</param>
     private void AddSourceRepo(SourceRepository sourceRepo)
@@ -225,24 +233,22 @@ public class NugetApi
 
         try
         {
-            _SourceRepositories.Add(sourceRepo);
-
             var packageMetadataEndpoint = sourceRepo.GetResource<PackageMetadataResource>();
-            _MetadataResources.Add(packageMetadataEndpoint);
-
             var dependencyInfoEndpoint = sourceRepo.GetResource<DependencyInfoResource>();
+
+            _SourceRepositories.Add(sourceRepo);
+            _MetadataResources.Add(packageMetadataEndpoint);
             _DependencyInfoResources.Add(dependencyInfoEndpoint);
         }
         catch (Exception e)
         {
-            var message = $"Error loading NuGet API Resource from url: {sourceRepo.PackageSource.SourceUri}";
-            if (!Config.TRACE)
-                throw new Exception(message, e);
-            
-            Console.WriteLine($"    {message}");
-            if (e.InnerException != null)
-                Console.WriteLine(e.InnerException.Message);
-            throw new Exception (message, e);
+            Console.Error.WriteLine(
+                $"WARNING: Skipping NuGet source '{sourceRepo.PackageSource.Source}': " +
+                $"unable to load NuGet API resources ({e.Message}). " +
+                "Packages that are only available on this source may be missing from the results. " +
+                "If this source requires authentication, check its credentials in nuget.config.");
+            if (Config.TRACE && e.InnerException != null)
+                Console.Error.WriteLine($"    {e.InnerException.Message}");
         }
     }
 
