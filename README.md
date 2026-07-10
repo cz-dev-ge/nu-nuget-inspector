@@ -19,6 +19,8 @@ This is a limitation due to windows and linux style paths in the scanned project
 files. When using ORT, run the Analyzer step which uses nu-nuget-inspector on the same
 platform as the project was built on.
 
+PS: You can still scan Windows built projects under Linux. There is a workaround in place that skips a check that removes false positives.
+
 ## NuGet feed authentication
 
 `nuget-inspector` uses `nuget.config` to discover package sources, the same as
